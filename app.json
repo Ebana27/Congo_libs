@@ -1,11 +1,12 @@
 {
   "expo": {
-    "name": "Congo_libs",
-    "slug": "Congo_libs",
+    "name": "congolibs",
+    "slug": "congolibs",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "congolibs",
     "ios": {
       "supportsTablet": true
     },
@@ -21,6 +22,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 240
+        }
+      ],
       "expo-router",
       "expo-status-bar"
     ]
