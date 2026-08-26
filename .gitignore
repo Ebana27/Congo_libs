@@ -42,3 +42,6 @@ yarn-error.*
 
 # Agents
 /.claude
+
+# VS Code
+/.vscode

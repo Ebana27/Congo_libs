@@ -1,46 +1,42 @@
-import { StatusBar } from 'expo-status-bar';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { View, Text, StatusBar, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Link } from 'expo-router';
+import Spinner from "../src/components/Spinner";
 
-export default function HomeScreen() {
+export default function Accueil() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Congolibs</Text>
-      <Text style={styles.subtitle}>Expo Router est maintenant la base de l'app.</Text>
-      <StatusBar style="auto" />
-      <Pressable onPress={() => alert('Pressed!')} style={styles.button}>
-        <Text style={styles.buttonText}>Press Me</Text>
-      </Pressable>
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      {/* Configuration de la barre de statut (optionnel mais recommandé) */}
+      <StatusBar barStyle="dark-content" /> 
+      
+      <View style={styles.container}>
+        <Text style={styles.title}>CONGOLIBS</Text>
+        <Text style={styles.subtitle}>Bienvenue sur Congolibs</Text>
+        <Spinner />
+
+      <Link href="/(tabs)" style={{ color: 'blue', marginTop: 20 }}>
+        Commencer
+      </Link>
+      </View>
+
+    </SafeAreaView>
   );
 }
 
+// Déclaration de l'objet styles
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1, // Permet à la SafeAreaView d'occuper tout l'écran
+    backgroundColor: '#fff',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    alignItems: 'center',     
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#555',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  button: {
-    backgroundColor: '#1f8f6d',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#000',
   },
 });
