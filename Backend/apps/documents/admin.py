@@ -1,3 +1,5 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import BacDetail, ConcoursDetail, Document, LivreDetail, Telechargement
+
+admin.site.register([Document, LivreDetail, ConcoursDetail, BacDetail, Telechargement])
