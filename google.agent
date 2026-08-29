@@ -1,0 +1,15 @@
+Ajoute la connexion Google (inscription et connexion) au projet Django REST Framework existant, en t'appuyant sur django-allauth et dj-rest-auth. N'invente aucune nouvelle app ni ne restructure l'existant — cette fonctionnalité s'intègre dans l'app users déjà en place. Rappel d'exécution : tout se fait dans les conteneurs Docker déjà lancés, via docker compose exec web ... — jamais d'installation locale hors conteneur.
+
+## Comportement attendu
+Un utilisateur qui clique sur "Se connecter avec Google" depuis le frontend React doit pouvoir soit créer un compte automatiquement (première connexion), soit se connecter à un compte existant (si l'email Google correspond déjà à un utilisateur enregistré) — sans jamais créer de doublon. Ce flux coexiste avec l'inscription/connexion classique déjà en place.
+
+## Dépendances à ajouter
+django-allauth, dj-rest-auth dans requirements.txt, puis docker compose build web.
+
+## Configuration (config/settings.py) — apps installées, SITE_ID = 1, et REST_AUTH en mode Token (SESSION_LOGIN: False). Identifiants Google (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) via .env.
+
+## Vue et endpoint — GoogleLoginView basée sur SocialLoginView de dj-rest-auth, exposée sous POST /api/v1/users/auth/google/.
+
+## Contraintes de cohérence — token retourné identique en forme à celui du login classique, modèle User non modifié, périmètre limité à Google pour l'instant, variables documentées dans .env.example.
+
+## Vérifications à faire — pas de doublon sur double connexion Google, fusion correcte si email déjà inscrit classiquement, erreur 400 propre si token invalide.

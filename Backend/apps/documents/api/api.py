@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate, login, logout
 from django.middleware.csrf import get_token
 from rest_framework import generics, mixins, serializers, status, viewsets
-from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
 from apps.documents.models import BacDetail, ConcoursDetail, Document, LivreDetail, Telechargement
@@ -23,6 +23,16 @@ class PublicListMixin(mixins.ListModelMixin, generics.GenericAPIView):
         return self.list(request, *args, **kwargs)
 
 
+class PublicCreateListMixin(PublicListMixin, mixins.CreateModelMixin):
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [AllowAny()]
+        return [IsAdminUser()]
+
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+
 class PublicDetailMixin(mixins.RetrieveModelMixin, generics.GenericAPIView):
     permission_classes = [AllowAny]
 
@@ -30,8 +40,33 @@ class PublicDetailMixin(mixins.RetrieveModelMixin, generics.GenericAPIView):
         return self.retrieve(request, *args, **kwargs)
 
 
-class DocumentListView(PublicListMixin):
+class PublicDetailUpdateDestroyMixin(
+    PublicDetailMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+):
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [AllowAny()]
+        return [IsAdminUser()]
+
+    def patch(self, request, *args, **kwargs):
+        return self.partial_update(request, *args, **kwargs)
+
+    def put(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
+
+
+class DocumentListView(PublicCreateListMixin):
     serializer_class = DocumentSerializer
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [AllowAny()]
+        return [IsAdminUser()]
 
     def get_queryset(self):
         queryset = Document.objects.filter(delete=False).order_by("-date_creation")
@@ -42,22 +77,35 @@ class DocumentListView(PublicListMixin):
         return queryset
 
 
-class DocumentDetailView(PublicDetailMixin):
+class DocumentDetailView(PublicDetailUpdateDestroyMixin):
     queryset = Document.objects.filter(delete=False)
     serializer_class = DocumentSerializer
 
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [AllowAny()]
+        return [IsAdminUser()]
 
-class LivreDetailListView(PublicListMixin):
+    def perform_destroy(self, instance):
+        instance.delete = True
+        instance.save(update_fields=["delete"])
+
+
+class LivreDetailListView(PublicCreateListMixin):
     queryset = LivreDetail.objects.filter(delete=False, document__delete=False)
     serializer_class = LivreDetailSerializer
 
 
-class LivreDetailView(PublicDetailMixin):
+class LivreDetailView(PublicDetailUpdateDestroyMixin):
     queryset = LivreDetail.objects.filter(delete=False, document__delete=False)
     serializer_class = LivreDetailSerializer
 
+    def perform_destroy(self, instance):
+        instance.delete = True
+        instance.save(update_fields=["delete"])
 
-class ConcoursDetailListView(PublicListMixin):
+
+class ConcoursDetailListView(PublicCreateListMixin):
     serializer_class = ConcoursDetailSerializer
 
     def get_queryset(self):
@@ -69,12 +117,16 @@ class ConcoursDetailListView(PublicListMixin):
         return queryset
 
 
-class ConcoursDetailView(PublicDetailMixin):
+class ConcoursDetailView(PublicDetailUpdateDestroyMixin):
     queryset = ConcoursDetail.objects.filter(delete=False, document__delete=False)
     serializer_class = ConcoursDetailSerializer
 
+    def perform_destroy(self, instance):
+        instance.delete = True
+        instance.save(update_fields=["delete"])
 
-class BacDetailListView(PublicListMixin):
+
+class BacDetailListView(PublicCreateListMixin):
     serializer_class = BacDetailSerializer
 
     def get_queryset(self):
@@ -85,9 +137,13 @@ class BacDetailListView(PublicListMixin):
         return queryset
 
 
-class BacDetailView(PublicDetailMixin):
+class BacDetailView(PublicDetailUpdateDestroyMixin):
     queryset = BacDetail.objects.filter(delete=False, document__delete=False)
     serializer_class = BacDetailSerializer
+
+    def perform_destroy(self, instance):
+        instance.delete = True
+        instance.save(update_fields=["delete"])
 
 
 class DocumentAdminViewSet(viewsets.ModelViewSet):

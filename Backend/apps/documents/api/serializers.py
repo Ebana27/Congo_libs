@@ -27,7 +27,7 @@ class LivreDetailSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = LivreDetail
 		fields = ["document", "auteur"]
-		read_only_fields = fields
+		read_only_fields = []
 
 	def validate_document(self, document):
 		if document.type != "livre":
@@ -39,7 +39,7 @@ class ConcoursDetailSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = ConcoursDetail
 		fields = ["document", "ecole", "annee", "matiere"]
-		read_only_fields = fields
+		read_only_fields = []
 
 	def validate_document(self, document):
 		if document.type != "concours":
@@ -51,7 +51,7 @@ class BacDetailSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = BacDetail
 		fields = ["document", "annee", "matiere", "niveau", "serie"]
-		read_only_fields = fields
+		read_only_fields = []
 
 	def validate_document(self, document):
 		if document.type != "bac":

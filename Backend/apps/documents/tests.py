@@ -2,10 +2,15 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from apps.users.models import User
 from .models import BacDetail, ConcoursDetail, Document, LivreDetail
 
 
 class DocumentApiTests(APITestCase):
+	def setUp(self):
+		self.admin = User.objects.create_superuser(username="admin", email="admin@example.com", password="Admin123!")
+		self.client.force_authenticate(user=self.admin)
+
 	def create_document(self, document_type="livre"):
 		response = self.client.post(
 			reverse("document-list-create"),
@@ -155,3 +160,8 @@ class DocumentApiTests(APITestCase):
 		self.assertEqual(self.client.delete(url).status_code, status.HTTP_204_NO_CONTENT)
 		self.assertTrue(BacDetail.objects.get(pk=document.pk).delete)
 
+DocumentApiTests.create_document 
+DocumentApiTests.test_document_crud_and_soft_delete
+DocumentApiTests.test_livre_detail_crud
+DocumentApiTests.test_bac_detail_crud
+DocumentApiTests.test_concours_detail_crud
