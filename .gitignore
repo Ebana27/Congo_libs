@@ -1,59 +1,167 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
+#################################
+# Fichiers et dossiers généraux
+#################################
+
+# Fichiers de configuration locaux
+.env
+.env*.local
+.env*.private
+
+# Fichiers de cache
+.cache/
+.DS_Store
+*.swp
+*.swo
+
+# Fichiers temporaires
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# Fichiers de log
+*.log
+logs/
+
+#################################
+# Node.js et npm/yarn/pnpm
+#################################
+
+# Dossiers de dépendances
 node_modules/
+**/node_modules/
+
+# Fichiers de verrouillage
+package-lock.json
+npm-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Fichiers de build
+dist/
+build/
+.next/
+out/
+
+# Fichiers de cache de npm/yarn/pnpm
+**/.npm
+**/.yarn
+**/.pnpm-store
+
+#################################
+# Python et Django (Backend)
+#################################
+
+# Dossier Backend complet
+Backend/
+
+# Environnements virtuels
+.venv/
+venv/
+env/
+
+# Fichiers Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyd
+
+# Dossiers générés
+*.egg-info/
+*.dist-info/
+build/
+dist/
+
+# Fichiers de base de données
+*.sqlite3
+*.db
+
+# Fichiers de cache et de log
+.pytest_cache/
+.coverage
+*.coveragerc
+
+#################################
+# Vite et React (Client)
+#################################
+
+# Dossier Client complet
+client/
+
+# Dossiers de build
+client/dist/
+client/.vite/
+client/.vite/cache/
+
+# Fichiers de cache
+client/.cache/
+
+# Fichiers de log
+client/npm-debug.log*
+client/yarn-debug.log*
+client/yarn-error.log*
+
+#################################
+# Expo et React Native (Projet principal)
+#################################
 
 # Expo
 .expo/
-dist/
-web-build/
 expo-env.d.ts
 
-# Native
-.kotlin/
+# Metro
+.metro-health-check*
+
+# Builds
+web-build/
+android/
+ios/
+
+# Fichiers natifs générés
 *.orig.*
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
+.kotlin/
 
-# Metro
-.metro-health-check*
+#################################
+# Docker
+#################################
 
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
+# Fichiers Docker
+.dockerignore
+Dockerfile
+*.dockerfile
 
-# macOS
-.DS_Store
-*.pem
+# Fichiers de build Docker
+.docker/
 
-# local env files
-.env
-.env*.local
+#################################
+# IDE et éditeurs de code
+#################################
 
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-venv/
+# VS Code
+.vscode/
+.settings/
 
-# typescript
-*.tsbuildinfo
+# JetBrains (IntelliJ, PyCharm, etc.)
+.idea/
+*.iml
 
-# generated native folders
-/ios
-/android
+# Autres IDE
+.idea/
+.idea_modules/
+.apt_generated/
+.idea_modules/
 
 # Agents
 /.claude
+/.github/
 
-# VS Code
-/.vscode
-.idea/
-.pytest_cache/
-
-# Frontend
-frontend/node_modules/
+# Fichiers de configuration
+*.swp
+*.swo
