@@ -38,10 +38,28 @@ CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         "CSRF_TRUSTED_ORIGINS",
-        "https://localhost,https://127.0.0.1,https://backend",
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:19006,http://127.0.0.1:19006,https://localhost,https://127.0.0.1,https://backend",
     ).split(",")
     if origin.strip()
 ]
+
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:19006,http://127.0.0.1:19006",
+    ).split(",")
+    if origin.strip()
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "x-csrftoken",
+    "x-requested-with",
+]
+CORS_EXPOSE_HEADERS = ["Content-Type", "X-CSRFToken"]
 
 
 # Application definition
@@ -57,6 +75,7 @@ INSTALLED_APPS = [
     # third-party apps
     "rest_framework",
     "rest_framework.authtoken",
+    "corsheaders",
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
@@ -94,6 +113,7 @@ REST_AUTH = {
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

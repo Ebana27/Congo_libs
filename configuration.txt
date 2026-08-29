@@ -1,0 +1,251 @@
+CONFIGURATION POUR CONNECTER REACT ET REACT NATIVE AU BACKEND DJANGO
+====================================================================
+
+Projet backend : Django REST Framework
+URL locale de base : http://127.0.0.1:8000
+
+1) URLS IMPORTANTES DU BACKEND
+------------------------------
+
+API documents :
+- http://127.0.0.1:8000/api/v1/documents/
+- http://127.0.0.1:8000/api/v1/documents/<uuid>/
+- http://127.0.0.1:8000/api/v1/documents/<uuid>/telecharger/
+
+Authentification :
+- http://127.0.0.1:8000/api/v1/users/login/
+- http://127.0.0.1:8000/api/v1/users/logout/
+- http://127.0.0.1:8000/api/v1/users/session/
+- http://127.0.0.1:8000/api/v1/users/auth/google/
+
+Documentation Swagger :
+- http://127.0.0.1:8000/api/docs/
+- http://127.0.0.1:8000/api/schema/
+
+IMPORTANT :
+- Le backend est configuré sous le préfixe /api/v1/
+- Le frontend doit appeler ces URLs exactes
+- Ne pas utiliser /api/v1/doc/ car cette route n'existe pas
+
+2) CORS ET ACCES FRONTEND
+-------------------------
+
+Le backend accepte les requêtes depuis les clients web/mobile grâce à django-cors-headers.
+Les origines autorisées par défaut sont :
+- http://localhost:3000
+- http://127.0.0.1:3000
+- http://localhost:19006
+- http://127.0.0.1:19006
+
+Cela permet à React (web) ou Expo/React Native d'appeler les APIs Django localement.
+
+3) PARAMETRES DJANGO POUR LES FRONTEND
+--------------------------------------
+
+Dans settings.py du backend, les éléments principaux sont :
+
+- CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:19006",
+    "http://127.0.0.1:19006",
+  ]
+
+- CORS_ALLOW_CREDENTIALS = True
+
+- CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:19006",
+    "http://127.0.0.1:19006",
+  ]
+
+- MIDDLEWARE contient 'corsheaders.middleware.CorsMiddleware'
+
+4) EXEMPLE REACT (WEB)
+----------------------
+
+const API_BASE = "http://127.0.0.1:8000/api/v1";
+
+function getCsrfToken() {
+  const cookie = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("csrftoken="));
+  return cookie ? cookie.split("=")[1] : "";
+}
+
+async function login(username, password) {
+  const res = await fetch(`${API_BASE}/users/login/`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken(),
+    },
+    body: JSON.stringify({ username, password }),
+  });
+
+  return res.json();
+}
+
+async function listDocuments() {
+  const res = await fetch(`${API_BASE}/documents/`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  return res.json();
+}
+
+5) EXEMPLE REACT NATIVE / EXPO
+------------------------------
+
+const API_BASE = "http://127.0.0.1:8000/api/v1";
+
+async function login(username, password) {
+  const res = await fetch(`${API_BASE}/users/login/`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ username, password }),
+  });
+
+  return res.json();
+}
+
+async function listDocuments() {
+  const res = await fetch(`${API_BASE}/documents/`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  return res.json();
+}
+
+ATTENTION:
+- Sur mobile, utiliser l'IP locale du PC au lieu de 127.0.0.1 si le téléphone/emulateur n'est pas sur la même machine.
+- Exemples : http://192.168.1.25:8000
+
+6) GOOGLE AUTH
+--------------
+
+Pour le login Google côté frontend, l'app envoie le token Google au backend :
+
+POST /api/v1/users/auth/google/
+
+Corps JSON attendu :
+{
+  "access_token": "TOKEN_GOOGLE"
+}
+
+Exemple :
+
+const res = await fetch(`${API_BASE}/users/auth/google/`, {
+  method: "POST",
+  credentials: "include",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ access_token: googleToken }),
+});
+
+7) TELECHARGEMENT PDF
+---------------------
+
+Le téléchargement PDF est protégé et ne retourne pas le lien Drive brut au client.
+L'endpoint est :
+
+POST /api/v1/documents/<uuid>/telecharger/
+
+Le backend enregistre l'historique Telechargement et renvoie le fichier PDF streamé.
+
+Exemple React :
+
+async function downloadDocument(documentId) {
+  const res = await fetch(`${API_BASE}/documents/${documentId}/telecharger/`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "document.pdf";
+  a.click();
+  window.URL.revokeObjectURL(url);
+}
+
+8) IMPORTANT POUR LES CALLS AUTHENTIFIES
+----------------------------------------
+
+Le backend utilise la session Django (cookie de session) et le CSRF.
+
+Pour les appels authentifiés :
+- utiliser credentials: "include" pour le fetch
+- en React web, récupérer le csrf token depuis le cookie csrftoken
+- en React Native, le comportement peut varier selon le contexte de navigation
+
+9) DEMARRER LE BACKEND
+---------------------
+
+Dans le projet racine :
+
+docker compose up -d --build backend
+
+Puis vérifier :
+
+docker compose exec backend python manage.py check
+
+docker compose exec backend python manage.py test
+
+10) EN CAS DE PROBLEME
+--------------------
+
+- Vérifier que le backend tourne sur le port 8000
+- Vérifier que l'URL front correspond bien à 127.0.0.1 ou à l'IP locale du PC
+- Vérifier que le navigateur/Expo autorise les cookies et le mode CORS
+- Vérifier que le backend est lancé via Docker
+- Vérifier la console du navigateur et les logs Django
+
+11) RESUME RAPIDE
+-----------------
+
+Backend API Django :
+http://127.0.0.1:8000/api/v1
+
+Frontend React / Expo :
+- web : http://localhost:3000
+- mobile : http://<IP-PC>:8000
+
+Donc, pour connecter le frontend au backend, il suffit de pointer les appels fetch vers :
+http://127.0.0.1:8000/api/v1/....
+
+12) VERSIONS UTILES
+-------------------
+
+- React web : localhost:3000
+- React Native / Expo : localhost:19006 ou http://<IP-PC>:19006
+- Backend Django : 127.0.0.1:8000
+
+13) NOTE DE SECURITE
+--------------------
+
+Le backend est prêt pour un usage local/developpement.
+En production, il faut configurer correctement :
+- HTTPS / TLS
+- cookies sécurisés
+- CSRF trusted origins corrects
+- HOSTS autorisés
+- variables d'environnement pour Google Drive et secrets
