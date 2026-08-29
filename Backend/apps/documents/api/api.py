@@ -5,6 +5,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.core.files.base import ContentFile
 from django.http import FileResponse
 from django.middleware.csrf import get_token
+from django.views.decorators.csrf import ensure_csrf_cookie
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from rest_framework import generics, mixins, serializers, status, viewsets
@@ -242,5 +243,6 @@ class LogoutView(generics.GenericAPIView):
 class SessionView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
+    @ensure_csrf_cookie
     def get(self, request, *args, **kwargs):
         return Response({"user": UserSerializer(request.user).data})
