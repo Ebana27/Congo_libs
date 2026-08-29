@@ -31,7 +31,14 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
 
 # typescript
 *.tsbuildinfo
@@ -45,3 +52,8 @@ yarn-error.*
 
 # VS Code
 /.vscode
+.idea/
+.pytest_cache/
+
+# Frontend
+frontend/node_modules/
