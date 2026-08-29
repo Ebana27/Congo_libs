@@ -3,3 +3,4 @@ djangorestframework
 psycopg[binary]
 django-allauth
 dj-rest-auth
+requests
