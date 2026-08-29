@@ -5,3 +5,5 @@ django-allauth
 dj-rest-auth
 requests
 drf-spectacular
+google-api-python-client
+google-auth

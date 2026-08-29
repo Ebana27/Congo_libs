@@ -9,9 +9,21 @@ from apps.documents.models import (
 )
 
 
-class DocumentSerializer(serializers.ModelSerializer):
+class PublicDocumentSerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Document
+		fields = [
+			"id",
+			"type",
+			"nom",
+			"date_creation",
+			"delete",
+		]
+		read_only_fields = ["id", "date_creation", "delete"]
+
+
+class DocumentSerializer(PublicDocumentSerializer):
+	class Meta(PublicDocumentSerializer.Meta):
 		fields = [
 			"id",
 			"type",

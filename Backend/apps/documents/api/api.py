@@ -1,5 +1,12 @@
+import json
+import os
+
 from django.contrib.auth import authenticate, login, logout
+from django.core.files.base import ContentFile
+from django.http import FileResponse
 from django.middleware.csrf import get_token
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 from rest_framework import generics, mixins, serializers, status, viewsets
 from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
@@ -12,8 +19,27 @@ from .serializers import (
     ConcoursDetailSerializer,
     DocumentSerializer,
     LivreDetailSerializer,
+    PublicDocumentSerializer,
     TelechargementSerializer,
 )
+
+
+def get_google_drive_service():
+    credentials_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+    if not credentials_json:
+        raise ValueError("GOOGLE_SERVICE_ACCOUNT_JSON is not configured")
+    info = json.loads(credentials_json)
+    credentials = service_account.Credentials.from_service_account_info(
+        info,
+        scopes=["https://www.googleapis.com/auth/drive.readonly"],
+    )
+    return build("drive", "v3", credentials=credentials, cache_discovery=False)
+
+
+def get_google_drive_file_bytes(file_id):
+    service = get_google_drive_service()
+    request = service.files().get_media(fileId=file_id)
+    return request.execute()
 
 
 class PublicListMixin(mixins.ListModelMixin, generics.GenericAPIView):
@@ -61,7 +87,7 @@ class PublicDetailUpdateDestroyMixin(
 
 
 class DocumentListView(PublicCreateListMixin):
-    serializer_class = DocumentSerializer
+    serializer_class = PublicDocumentSerializer
 
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
@@ -79,7 +105,7 @@ class DocumentListView(PublicCreateListMixin):
 
 class DocumentDetailView(PublicDetailUpdateDestroyMixin):
     queryset = Document.objects.filter(delete=False)
-    serializer_class = DocumentSerializer
+    serializer_class = PublicDocumentSerializer
 
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
@@ -162,8 +188,17 @@ class DownloadDocumentView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         document = self.get_object()
+        file_id = document.lien_telechargement
+        try:
+            pdf_bytes = get_google_drive_file_bytes(file_id)
+        except Exception as exc:
+            return Response({"detail": f"Impossible de récupérer le document: {exc}"}, status=status.HTTP_502_BAD_GATEWAY)
+
         Telechargement.objects.create(user=request.user, document=document)
-        return Response({"lien_telechargement": document.lien_telechargement})
+        filename = f"{document.nom or 'document'}.pdf"
+        response = FileResponse(ContentFile(pdf_bytes, name=filename), as_attachment=True, filename=filename)
+        response["Content-Type"] = "application/pdf"
+        return response
 
 
 class DownloadHistoryView(mixins.ListModelMixin, generics.GenericAPIView):
