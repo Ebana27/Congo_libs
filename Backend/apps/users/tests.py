@@ -55,3 +55,22 @@ class GoogleAuthTests(APITestCase):
             SocialAccount.objects.filter(user=existing_user, provider="google", uid="existing@example.com").exists()
         )
         self.assertEqual(response.data["user"]["email"], "existing@example.com")
+
+
+class MobileAuthTests(APITestCase):
+    def test_mobile_login_returns_token_for_valid_user(self):
+        user = User.objects.create_user(
+            username="mobileuser",
+            email="mobile@example.com",
+            password="StrongPass123!",
+        )
+
+        response = self.client.post(
+            reverse("mobile_login"),
+            {"username": "mobileuser", "password": "StrongPass123!"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("token", response.data)
+        self.assertEqual(response.data["user_id"], user.id)

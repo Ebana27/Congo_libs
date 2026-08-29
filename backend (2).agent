@@ -1,0 +1,174 @@
+Construis le backend Django REST Framework d'une plateforme de recherche de documents (sujets d'examens/concours : sujets de maths de terminale, sujets par concours, etc.), consultable par matière, niveau ou concours, avec téléchargement de PDF. Suis exactement les spécifications ci-dessous.
+
+## Règle d'exécution — environnement Docker (prioritaire, à respecter avant toute autre instruction technique)
+
+Tout le projet s'exécute dans des conteneurs Docker déjà lancés sur la machine (`docker-compose up` a déjà été exécuté, les conteneurs `web` et `db` tournent). Ne jamais installer de dépendance directement sur la machine hôte, ne jamais créer ni utiliser d'environnement virtuel Python local (`venv`, `virtualenv`, `pipenv` hors conteneur). Toute commande (installation de paquet, migration, création de superuser, exécution de tests, shell Django) doit être exécutée à l'intérieur du conteneur `web` déjà actif, via `docker compose exec web <commande>` — jamais via `python manage.py ...` ou `pip install ...` lancé directement sur l'hôte.
+
+Exemples de commandes attendues :
+- `docker compose exec web python manage.py makemigrations`
+- `docker compose exec web python manage.py migrate`
+- `docker compose exec web python manage.py createsuperuser`
+- `docker compose exec web pip install <paquet>` uniquement pour tester rapidement, mais toute dépendance ajoutée doit ensuite être répercutée dans `requirements.txt` (voir ci-dessous) — l'installation via `pip install` seule dans le conteneur ne persiste pas après un rebuild.
+
+Toute nouvelle dépendance Python nécessaire au projet doit être ajoutée explicitement dans `requirements.txt` (avec version figée, ex: `djangorestframework==3.15.2`), jamais laissée uniquement installée à la volée dans le conteneur. Après ajout d'une dépendance dans `requirements.txt`, l'image doit être reconstruite (`docker compose build web` ou `docker compose up --build`) pour que le `Dockerfile` la réinstalle proprement à la prochaine reconstruction.
+
+## Périmètre fonctionnel
+
+La recherche et la consultation des fiches documents sont libres, sans compte. Le téléchargement d'un document nécessite obligatoirement d'être connecté — aucune distinction gratuit/payant, aucune logique de commande ou de paiement n'existe dans ce projet. Chaque téléchargement effectué doit être enregistré dans un historique indiquant quel utilisateur a téléchargé quel document et à quel moment. Seuls les administrateurs peuvent créer ou modifier des documents ; aucun upload ni import automatique côté client.
+
+## Architecture des apps
+
+Découpe le projet en apps par domaine métier, pas par modèle individuel. Un modèle rejoint une app existante s'il n'a de sens qu'en lien avec un autre modèle de cette app.
+
+```
+mon_projet/
+    manage.py
+    users/
+        models.py       # User
+    documents/
+        models.py        # Document, LivreDetail, ConcoursDetail, BacDetail, Telechargement
+    config/
+        settings.py
+        urls.py
+    Dockerfile
+    docker-compose.yml
+    requirements.txt
+    .env.example
+```
+
+N'implémente aucune app ni aucun modèle lié au paiement ou aux commandes (pas d'Order, pas de Transaction, pas d'app payments). N'implémente pas de cache Redis dans cette version — voir section "Hors périmètre V1" en fin de document.
+
+## Modèle de données
+
+- **User** (app `users`) : hérite de `AbstractUser`, ajoute `telephone` (optionnel) et `ville`. Déclare `AUTH_USER_MODEL = 'users.User'` dans `settings.py` dès le départ, avant toute migration.
+- **Document** (table commune) + **LivreDetail** / **ConcoursDetail** / **BacDetail** (tables de détail en relation 1-1 avec `Document`, un seul type de détail par document). Un document est catégorisé soit par Concours, soit par Niveau scolaire (Matière + Niveau), jamais les deux à la fois — la logique de recherche/filtre doit respecter cette exclusivité et ne jamais mélanger les deux critères dans une même requête.
+- **Telechargement** (app `documents`) : `user` (FK vers `settings.AUTH_USER_MODEL`), `document` (FK vers `Document`), `date_telechargement` (auto, horodatage à la création). Sert d'historique — un enregistrement est créé à chaque téléchargement réussi.
+
+Toute FK vers l'utilisateur utilise `settings.AUTH_USER_MODEL` (dans les définitions de modèle) ou `get_user_model()` (dans le code applicatif) — jamais un import direct du modèle `User`.
+
+### Indexation requise dès la V1
+
+Ajoute `db_index=True` (ou un index composite via `Meta.indexes`) sur tous les champs utilisés dans la recherche/filtre : titre du document, matière, niveau, concours. C'est le levier de performance principal de cette V1 — pas de cache applicatif à ce stade, voir "Hors périmètre V1".
+
+## Stockage et service des fichiers PDF (critique)
+
+Le fichier PDF ne doit jamais être exposé sous une URL statique publique, ni sous un lien Google Drive directement partageable renvoyé au client. Un utilisateur qui obtient l'URL brute du fichier ne doit pas pouvoir le récupérer sans passer par le contrôle d'authentification à chaque accès — un lien partagé une fois ne doit pas rester valide indéfiniment en dehors de ce contrôle.
+
+**Stockage** : les fichiers restent sur Google Drive, mais en accès **Restreint** (aucun partage par lien, aucun accès public). Seul un compte de service Google (Service Account) dédié à ce projet a accès aux fichiers.
+
+**Champ `lien_telechargement` sur `Document`** : stocke uniquement l'identifiant du fichier Drive (`file_id`), jamais une URL de partage complète. Ce champ n'est jamais exposé tel quel dans une réponse API, publique ou authentifiée.
+
+**Mécanisme de service (proxy)** : la vue de téléchargement protégée (`IsAuthenticated`, voir plus bas) récupère les octets du fichier via l'API Google Drive (`files().get_media(fileId=...)` du SDK `google-api-python-client`), authentifiée avec les identifiants du compte de service, puis les streame directement au client via `FileResponse` — le client ne voit jamais d'URL Drive, seulement une réponse binaire provenant du domaine de l'API elle-même. Cette étape doit se produire à chaque appel de l'endpoint de téléchargement, après vérification de l'authentification et avant la création de l'enregistrement `Telechargement`.
+
+**Dépendance et configuration** : ajoute `google-api-python-client` et `google-auth` dans `requirements.txt`. Les identifiants du compte de service (fichier JSON) ne doivent jamais être committés — monte le fichier de credentials via un volume Docker non versionné, ou charge son contenu depuis une variable d'environnement (`GOOGLE_SERVICE_ACCOUNT_JSON`) décodée au démarrage. Documente cette variable dans `.env.example` avec une valeur vide.
+
+## Authentification
+
+Authentification par cookie de session (`SessionAuthentication` de DRF), pas de JWT. Le client (frontend) doit envoyer les requêtes avec les cookies de session Django et le header `X-CSRFToken` sur les requêtes non sûres (POST, PUT, PATCH, DELETE), conformément au middleware CSRF standard de Django.
+
+Configuration attendue dans `settings.py` :
+- `SESSION_COOKIE_HTTPONLY = True`
+- `CSRF_COOKIE_HTTPONLY = False` (le frontend doit pouvoir lire ce cookie pour injecter le token dans les headers) — documente clairement que ce choix reporte une part de la sécurité sur l'échappement systématique des sorties utilisateur côté frontend (protection XSS), puisqu'un script injecté pourrait autrement lire ce cookie.
+- `SESSION_COOKIE_SAMESITE` et `CSRF_COOKIE_SAMESITE` : si le frontend est sur un domaine différent du backend en production, régler sur `None` avec `Secure=True` (HTTPS obligatoire) pour que le cookie soit transmis cross-site ; sinon garder `Lax`.
+- Si `django-cors-headers` est utilisé (frontend séparé), `CORS_ALLOW_CREDENTIALS = True` est obligatoire, sinon la session ne persiste pas entre les requêtes malgré un login réussi.
+
+Endpoints d'authentification à exposer : connexion (crée la session), déconnexion (détruit la session), et un endpoint de vérification de session active (retourne l'utilisateur connecté ou 401).
+
+### Authentification mobile (React Native) — Token en parallèle du cookie
+
+Le projet a deux clients distincts : le frontend web React (cookie de session, décrit ci-dessus) et une app mobile React Native, pour laquelle le cookie de session est mal adapté (pas de gestion native de cookie jar persistante, pas de navigateur pour porter la logique CSRF). Pour ce client, utilise `TokenAuthentication`, activée en parallèle sans rien changer au comportement du client web :
+
+```python
+# settings.py
+INSTALLED_APPS += ['rest_framework.authtoken']
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',  # client web React
+        'rest_framework.authentication.TokenAuthentication',    # client mobile React Native
+    ],
+}
+```
+
+Après ajout de `rest_framework.authtoken`, exécute la migration correspondante (`docker compose exec web python manage.py migrate`).
+
+**Endpoint de connexion dédié au mobile**, séparé de l'endpoint web pour éviter de faire diverger le comportement d'une même route selon le client appelant :
+
+```python
+# users/views.py
+from rest_framework.authtoken.models import Token
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from django.contrib.auth import authenticate
+
+class MobileLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        user = authenticate(username=request.data.get('username'), password=request.data.get('password'))
+        if user is None:
+            return Response({'detail': 'Identifiants invalides'}, status=401)
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({'token': token.key, 'user_id': user.id})
+```
+
+Expose cette vue sous `POST /api/v1/users/login-mobile/`. Le client mobile envoie ensuite ce token sur chaque requête via le header `Authorization: Token <token>` — aucune gestion de cookie, aucun header CSRF requis pour ce client, `TokenAuthentication` en est exempté par conception.
+
+**Ce qui ne change pas** : une fois authentifié par n'importe lequel des deux mécanismes, `request.user` est résolu de la même façon — `IsAuthenticated`, la vérification d'appartenance sur `Telechargement`, le filtrage de l'historique par `request.user`, et le proxy Google Drive fonctionnent identiquement pour les deux clients, sans logique conditionnelle par type de client dans les vues métier.
+
+### Protection contre le brute-force
+
+Applique un throttling dédié sur les deux endpoints de connexion (web et mobile) (`ScopedRateThrottle` DRF ou équivalent) pour limiter les tentatives répétées de login. Sans cette limite, l'endpoint est vulnérable au brute-force et au credential stuffing.
+
+## Construction des APIs — mixins par défaut, ViewSet uniquement pour le CRUD standard
+
+Pour chaque service, choisis l'approche selon la nature de l'endpoint :
+
+- **Recherche/consultation des documents** (Document, LivreDetail, ConcoursDetail, BacDetail) : `ReadOnlyModelViewSet` ou mixins `ListModelMixin` / `RetrieveModelMixin` sur `GenericAPIView`. Accès libre, sans authentification requise. Pagination obligatoire (pas optionnelle) dès la V1 — sans elle, la liste complète du catalogue part dans chaque réponse dès que le volume de documents augmente. Applique aussi un `AnonRateThrottle` sur cet endpoint pour éviter le scraping intégral du catalogue ou une charge excessive par requêtes massives.
+- **Téléchargement d'un document** : vue dédiée sur `GenericAPIView` avec mixin custom. Cette vue doit : vérifier l'authentification, appeler `self.get_object()` sur le document ciblé, récupérer les octets du fichier depuis Google Drive via le compte de service (voir section stockage), créer l'enregistrement `Telechargement` correspondant, puis streamer le fichier au client via `FileResponse` (jamais un lien Drive ni une URL statique renvoyés directement). Ne construis pas cette logique dans un `ModelViewSet` générique.
+- **CRUD admin des documents** (création/édition, réservé aux administrateurs) : `ModelViewSet` + `DefaultRouter` légitime ici car c'est du CRUD standard sans logique conditionnelle par action. Le serializer doit déclarer explicitement en `read_only_fields` tout champ qui ne doit pas être modifiable directement (id, timestamps, relations sensibles) pour éviter le mass assignment.
+- **Consultation de l'historique de téléchargement** (un utilisateur voit ses propres téléchargements) : mixin `ListModelMixin` sur `GenericAPIView`, avec le queryset filtré strictement sur `request.user` — jamais l'historique complet exposé à un utilisateur non-admin.
+
+Principe général : composer exactement les mixins nécessaires par vue plutôt que d'hériter d'un `ModelViewSet` monolithique géré par des conditions sur `self.action`.
+
+## Recherche — points d'attention
+
+Normalise les accents dans la logique de recherche texte (comparaison insensible aux accents en plus d'insensible à la casse) : une recherche sans accent doit retrouver un contenu accentué et inversement, sinon des recherches légitimes en français ne retournent aucun résultat de façon silencieuse. Vérifie que le filtre respecte l'exclusivité Concours/Niveau décrite plus haut — ne jamais permettre une requête qui combine les deux critères simultanément si ça ne correspond à aucun document par construction.
+
+## Permissions par endpoint
+
+| Endpoint | Anonyme | Connecté (non-admin) | Admin |
+|---|---|---|---|
+| Recherche / consultation des fiches documents | Autorisé | Autorisé | Autorisé |
+| Téléchargement d'un document | Refusé (401) | Autorisé | Autorisé |
+| Consultation de son propre historique de téléchargement | Refusé (401) | Autorisé (ses téléchargements uniquement) | Autorisé |
+| Création / édition d'un document | Refusé | Refusé (403) | Autorisé |
+
+Déclare `permission_classes` explicitement sur chaque vue — n'utilise aucun défaut implicite global pour les vues sensibles (téléchargement, historique, gestion admin des documents). Pour la vue de téléchargement, utilise au minimum `IsAuthenticated`, appliqué avant toute logique métier.
+
+## Conteneurisation Docker
+
+- **Dockerfile** pour le service Django : image Python slim, installation des dépendances via `requirements.txt`, exécution via un serveur adapté à la production (ex: Gunicorn), pas le serveur de développement Django.
+- **docker-compose.yml** définissant au minimum deux services : `web` (l'application Django) et `db` (PostgreSQL). Ajoute un `volume` nommé pour la persistance des données PostgreSQL, et un volume pour les fichiers PDF stockés (cohérent avec la section stockage protégé plus haut — le volume ne doit pas être exposé publiquement en dehors du conteneur).
+- Le service `web` dépend de `db` (`depends_on`) et lit toute sa configuration depuis les variables d'environnement (voir section suivante), jamais de valeurs codées en dur dans `settings.py`.
+
+### Configuration et secrets via fichiers `.env`
+
+Toute la configuration sensible ou dépendante de l'environnement (clé secrète Django, identifiants de connexion PostgreSQL, `DEBUG`, `ALLOWED_HOSTS`, origines CORS autorisées) doit être lue depuis des variables d'environnement, jamais codée en dur dans `settings.py`. Utilise `django-environ` ou `python-decouple` pour charger ces variables.
+
+- **`.env.example`** : versionné dans le dépôt, liste toutes les variables attendues avec des valeurs factices ou vides (sert de documentation de configuration).
+- **`.env`** : contient les vraies valeurs, jamais versionné — doit être ajouté à `.gitignore` dès la mise en place du projet.
+- Le `docker-compose.yml` charge le fichier `.env` via `env_file` pour le service `web` (et `db` si les identifiants PostgreSQL y sont aussi centralisés).
+
+Variables minimales attendues dans `.env.example` : `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `DATABASE_URL` (ou les variables PostgreSQL séparées : `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`), `CORS_ALLOWED_ORIGINS`, `GOOGLE_SERVICE_ACCOUNT_JSON` (credentials du compte de service Drive, valeur vide dans `.env.example`).
+
+## Contraintes générales
+
+- ORM Django exclusivement, aucune requête SQL brute.
+- Aucune app ni logique liée au paiement, à la commande, ou à un statut de transaction — ce périmètre est explicitement exclu du projet.
+- Chaque téléchargement réussi doit produire un enregistrement `Telechargement`, sans exception, avant de retourner la réponse au client.
+
+## Hors périmètre V1 (ne pas implémenter maintenant)
+
+Ne pas ajouter de cache Redis ni aucune logique de mise en cache des documents les plus recherchés dans cette version. Cette fonctionnalité suppose un système de comptage/tracking des recherches qui n'existe pas encore, et l'indexation DB décrite plus haut couvre les besoins de performance d'une V1. À réévaluer une fois un usage réel mesuré.

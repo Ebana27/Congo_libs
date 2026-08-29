@@ -5,14 +5,35 @@ from urllib.request import urlopen
 from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
-from django.contrib.auth import login
+from django.contrib.auth import authenticate, login
 from dj_rest_auth.registration.views import SocialLoginView
 from django.middleware.csrf import get_token
 from rest_framework import serializers
+from rest_framework.authtoken.models import Token
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.users.api.serializers import UserSerializer
 from apps.users.models import User
+
+
+class MobileLoginView(APIView):
+    permission_classes = [AllowAny]
+    throttle_scope = "mobile_login"
+
+    def post(self, request, *args, **kwargs):
+        username = request.data.get("username")
+        password = request.data.get("password")
+        if not username or not password:
+            raise serializers.ValidationError({"detail": "Le nom d'utilisateur et le mot de passe sont requis."})
+
+        user = authenticate(request, username=username, password=password)
+        if user is None:
+            return Response({"detail": "Identifiants invalides."}, status=401)
+
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({"token": token.key, "user_id": user.id})
 
 
 class GoogleLoginView(SocialLoginView):
