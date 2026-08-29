@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.google",
     "dj_rest_auth",
     "dj_rest_auth.registration",
+    "drf_spectacular",
     #local apps
     "apps.documents",
     "apps.users",
@@ -186,6 +187,13 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Congo Libs API",
+    "DESCRIPTION": "API de gestion des documents, détails et authentification Google.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
