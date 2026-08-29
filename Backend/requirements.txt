@@ -1,3 +1,10 @@
 Django
 djangorestframework
 psycopg[binary]
+django-allauth
+dj-rest-auth
+requests
+drf-spectacular
+django-cors-headers
+google-api-python-client
+google-auth
