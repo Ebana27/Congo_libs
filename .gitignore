@@ -1,190 +1,43 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-#################################
 # Fichiers et dossiers généraux
-#################################
-
-# Fichiers de configuration locaux
-.env
-.env*.local
-.env*.private
-
-# Fichiers de cache
-.cache/
 .DS_Store
+Thumbs.db
 *.swp
 *.swo
-
-# Fichiers temporaires
 *.tmp
-*.temp
-*.bak
-*.orig
-
-# Fichiers de log
 *.log
 logs/
 
-#################################
-# Node.js et npm/yarn/pnpm
-#################################
+# Environnement
+.env
+.env.*
+!.env.exemple
 
-# Dossiers de dépendances
+# Node.js
 node_modules/
 **/node_modules/
 
-# Fichiers de verrouillage
-package-lock.json
-npm-lock.json
-yarn.lock
-pnpm-lock.yaml
-
-# Fichiers de build
+# Builds et caches
 dist/
 build/
-.next/
-out/
+.cache/
+coverage/
 
-# Fichiers de cache de npm/yarn/pnpm
-**/.npm
-**/.yarn
-**/.pnpm-store
-
-#################################
-# Python et Django (Backend)
-#################################
-
-# Dossier Backend complet
+# Python / Backend
 Backend/
-
-# Environnements virtuels
-.venv/
-venv/
-env/
-
-# Fichiers Python
 __pycache__/
 *.py[cod]
-*.pyc
-*.pyd
-
-# Dossiers générés
-*.egg-info/
-*.dist-info/
-build/
-dist/
-
-# Fichiers de base de données
 *.sqlite3
-*.db
 
-# Fichiers de cache et de log
-.pytest_cache/
-.coverage
-*.coveragerc
-
-#################################
-# Vite et React (Client)
-#################################
-
-
-
-# Dossiers de build
-client/dist/
-client/.vite/
-client/.vite/cache/
-
-# Fichiers de cache
-client/.cache/
-
-# Fichiers de log
-client/npm-debug.log*
-client/yarn-debug.log*
-client/yarn-error.log*
-
-#################################
-# Expo et React Native (Projet principal)
-#################################
-
-# Expo
-.expo/
-expo-env.d.ts
-
-# Metro
-.metro-health-check*
-
-# Builds
-web-build/
-android/
-ios/
-
-# Fichiers natifs générés
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-.kotlin/
-
-#################################
-# Docker
-#################################
-
-# Fichiers Docker
-.dockerignore
-Dockerfile
-*.dockerfile
-
-# Fichiers de build Docker
-.docker/
-
-#################################
-# IDE et éditeurs de code
-#################################
-
-# VS Code
+# IDE
 .vscode/
-.settings/
-
-# JetBrains (IntelliJ, PyCharm, etc.)
 .idea/
 *.iml
 
-# Autres IDE
-.idea/
-.idea_modules/
-.apt_generated/
-.idea_modules/
-
-# Agents
-/.claude
-/.github/
-
-# Fichiers de configuration
-*.swp
-*.swo
-
-# Other Folders
-# docs
-docs/
-
-# Fichiers d'environnement
-.env
-.env.*
-.env.local
-.env.development
-.env.production
-.env.test
-
-# Docker
-# Fichiers Docker
+# Autres configs de machine
 docker-compose.yml
 docker-compose.*.yml
-
-# Configurations
-# Fichiers de configuration
 configuration.txt
-
-# google.agent*.agent
 *.agent
+
+# Les règles spécifiques à Expo sont dans App/.gitignore
+# Les règles spécifiques au Backend doivent rester dans Backend/

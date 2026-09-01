@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Congolibs",
+    "slug": "congolibs",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "congolibs",
+    "primaryColor": "#ECFCCB",
+    "icon": "./assets/icons/icon.png",
+    "splash": {
+      "image": "./assets/splash/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ECFCCB"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ECFCCB",
+        "foregroundImage": "./assets/icons/android-icon-foreground.png",
+        "backgroundImage": "./assets/icons/android-icon-background.png",
+        "monochromeImage": "./assets/icons/android-icon-monochrome.png"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/icons/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ECFCCB",
+          "image": "./assets/splash/splash-icon.png",
+          "imageWidth": 200
+        }
+      ]
+    ]
+  }
+}

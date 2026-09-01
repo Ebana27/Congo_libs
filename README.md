@@ -304,27 +304,35 @@ docker compose down
 ## Structure du projet
 
 ```text
-project/
+Congo_libs/
 │
-├── Dockerfile
-├── docker-compose.yml
-├── .dockerignore
-├── .gitignore
-├── .env
-├── .env.example
-├── requirements.txt
 ├── README.md
+├── .gitignore
+├── docker-compose.yml
+├── .env.exemple
 │
-├── manage.py
+├── App/                    # Application mobile Expo / React Native
+│   ├── app/                # Écrans et navigation (expo-router)
+│   ├── src/                # Composants, thème, constantes
+│   ├── assets/             # Images, icônes, polices (fonts/)
+│   ├── BACKEND.md          # Documentation d'intégration avec l'API
+│   └── package.json
 │
-└── config/
-    ├── settings.py
-    ├── urls.py
-    ├── asgi.py
-    └── wsgi.py
+└── Backend/                # API Django REST Framework (non versionné)
+    ├── manage.py
+    ├── config/
+    ├── apps/
+    └── requirements.txt
 ```
 
 Cette structure évoluera au fur et à mesure du développement.
+
+## Collaboration (éviter les conflits Git)
+
+- **`.gitignore` racine** : reste **minimal et stable**. Les règles spécifiques vivent dans `App/.gitignore` (Expo) et `Backend/` — les modifier ne nécessite pas de toucher au fichier racine.
+- **`README.md` racine** : ne pas y ajouter de contenu propre à chaque PR. Les notes d'implémentation vont dans `App/BACKEND.md`, `docs/` ou le README du sous-projet concerné.
+- Avant chaque PR : `git pull origin main --rebase` pour garder un historique propre.
+- Le dossier `Backend/` n'est pas suivi par Git par défaut.
 
 ## Développement
 
