@@ -87,8 +87,7 @@ dist/
 # Vite et React (Client)
 #################################
 
-# Dossier Client complet
-client/
+
 
 # Dossiers de build
 client/dist/
@@ -165,3 +164,27 @@ Dockerfile
 # Fichiers de configuration
 *.swp
 *.swo
+
+# Other Folders
+# docs
+docs/
+
+# Fichiers d'environnement
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Docker
+# Fichiers Docker
+docker-compose.yml
+docker-compose.*.yml
+
+# Configurations
+# Fichiers de configuration
+configuration.txt
+
+# google.agent*.agent
+*.agent

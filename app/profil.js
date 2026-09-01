@@ -17,7 +17,7 @@ export default function ProfilScreen() {
         <Pressable onPress={() => router.back()} style={styles.actionButton}>
           <ChevronLeft color={COLOR.neutral || '#111827'} size={24} />
         </Pressable>
-        <Pressable onPress={() => alert('Paramètres')} style={styles.actionButton}>
+        <Pressable onPress={() => router.push('/settings')} style={styles.actionButton}>
           <Settings color={COLOR.neutral || '#111827'} size={22} />
         </Pressable>
       </View>
@@ -26,14 +26,14 @@ export default function ProfilScreen() {
         {/* Section Identité (Style Behance Hero) */}
         <View style={styles.profileHero}>
           <View style={styles.avatarContainer}>
-            <Image 
-              source={require('../assets/img/profil.png')} 
+            <Image
+              source={require('../assets/img/profil.png')}
               style={styles.avatar}
             />
           </View>
           <Text style={styles.userName}>Plamedi Nkounkou</Text>
           <Text style={styles.userTitle}>Étudiant — Brazzaville, Congo</Text>
-          
+
           <Pressable style={styles.editButton} onPress={() => alert('Modifier le profil')}>
             <Text style={styles.editButtonText}>Modifier le profil</Text>
           </Pressable>
