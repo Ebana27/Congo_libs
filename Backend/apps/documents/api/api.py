@@ -215,6 +215,7 @@ class DownloadHistoryView(mixins.ListModelMixin, generics.GenericAPIView):
 
 class LoginView(generics.GenericAPIView):
     permission_classes = [AllowAny]
+    throttle_scope = "login"
 
     def post(self, request, *args, **kwargs):
         username = request.data.get("username")

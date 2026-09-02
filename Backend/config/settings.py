@@ -20,7 +20,7 @@ DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 ALLOWED_HOSTS = os.environ.get(
     "ALLOWED_HOSTS",
-    "localhost,127.0.0.1,0.0.0.0,[::1],backend",
+    "localhost,127.0.0.1,0.0.0.0,[::1],backend,.ngrok-free.dev",
 ).split(",")
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS if host.strip()]
 
@@ -38,7 +38,7 @@ CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         "CSRF_TRUSTED_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:19006,http://127.0.0.1:19006,https://localhost,https://127.0.0.1,https://backend",
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:19006,http://127.0.0.1:19006,https://localhost,https://127.0.0.1,https://backend",
     ).split(",")
     if origin.strip()
 ]
@@ -47,7 +47,7 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         "CORS_ALLOWED_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:19006,http://127.0.0.1:19006",
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:19006,http://127.0.0.1:19006",
     ).split(",")
     if origin.strip()
 ]
@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     #local apps
     "apps.documents",
     "apps.users",
+    "admin_api",
 ]
 
 SITE_ID = 1
@@ -206,7 +207,18 @@ STATIC_URL = 'static/'
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
     ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/day",
+        "user": "1000/day",
+        "login": "10/min",
+        "mobile_login": "10/min",
+    },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 SPECTACULAR_SETTINGS = {

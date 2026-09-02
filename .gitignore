@@ -1,167 +1,40 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-#################################
-# Fichiers et dossiers généraux
-#################################
-
-# Fichiers de configuration locaux
 .env
 .env*.local
-.env*.private
 
-# Fichiers de cache
-.cache/
-.DS_Store
-*.swp
-*.swo
-
-# Fichiers temporaires
-*.tmp
-*.temp
-*.bak
-*.orig
-
-# Fichiers de log
-*.log
-logs/
-
-#################################
-# Node.js et npm/yarn/pnpm
-#################################
-
-# Dossiers de dépendances
-node_modules/
-**/node_modules/
-
-# Fichiers de verrouillage
-package-lock.json
-npm-lock.json
-yarn.lock
-pnpm-lock.yaml
-
-# Fichiers de build
-dist/
-build/
-.next/
-out/
-
-# Fichiers de cache de npm/yarn/pnpm
-**/.npm
-**/.yarn
-**/.pnpm-store
-
-#################################
-# Python et Django (Backend)
-#################################
-
-# Dossier Backend complet
-Backend/
-
-# Environnements virtuels
-.venv/
-venv/
-env/
-
-# Fichiers Python
 __pycache__/
 *.py[cod]
-*.pyc
-*.pyd
 
-# Dossiers générés
-*.egg-info/
-*.dist-info/
-build/
-dist/
+.venv/
+venv/
 
-# Fichiers de base de données
-*.sqlite3
-*.db
+node_modules/
+frontend/node_modules/
 
-# Fichiers de cache et de log
+.vscode/
+.idea/
 .pytest_cache/
-.coverage
-*.coveragerc
 
-#################################
-# Vite et React (Client)
-#################################
-
-# Dossier Client complet
-client/
-
-# Dossiers de build
-client/dist/
-client/.vite/
-client/.vite/cache/
-
-# Fichiers de cache
-client/.cache/
-
-# Fichiers de log
-client/npm-debug.log*
-client/yarn-debug.log*
-client/yarn-error.log*
-
-#################################
-# Expo et React Native (Projet principal)
-#################################
-
-# Expo
 .expo/
+dist/
+web-build/
 expo-env.d.ts
 
-# Metro
-.metro-health-check*
-
-# Builds
-web-build/
-android/
-ios/
-
-# Fichiers natifs générés
+.kotlin/
 *.orig.*
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
-.kotlin/
 
-#################################
-# Docker
-#################################
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
 
-# Fichiers Docker
-.dockerignore
-Dockerfile
-*.dockerfile
-
-# Fichiers de build Docker
-.docker/
-
-#################################
-# IDE et éditeurs de code
-#################################
-
-# VS Code
-.vscode/
-.settings/
-
-# JetBrains (IntelliJ, PyCharm, etc.)
-.idea/
-*.iml
-
-# Autres IDE
-.idea/
-.idea_modules/
-.apt_generated/
-.idea_modules/
-
-# Agents
+.DS_Store
+*.pem
+*.tsbuildinfo
 /.claude
-/.github/
-
-# Fichiers de configuration
-*.swp
-*.swo
+/ios
+/android

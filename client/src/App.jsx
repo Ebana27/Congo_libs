@@ -15,12 +15,18 @@ import Reader from './pages/Reader'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminLoginPage from './admin/AdminLoginPage'
+import AdminDashboardPage from './admin/AdminDashboardPage'
+import AdminUsersPage from './admin/AdminUsersPage'
 
 function App() {
   return (
     <Routes>
       <Route path="/connexion" element={<Login />} />
       <Route path="/inscription" element={<Register />} />
+      <Route path="/admin" element={<AdminLoginPage />} />
+      <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+      <Route path="/admin/users" element={<AdminUsersPage />} />
 
       <Route
         element={
