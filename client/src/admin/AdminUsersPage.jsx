@@ -1,22 +1,26 @@
 import { useEffect, useState } from 'react'
+import { getApiErrorMessage, readApiResponse } from './adminApi'
 
 const API_URL = 'http://localhost:8000/api/v1/admin'
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     async function load() {
       try {
         const response = await fetch(`${API_URL}/users/`, { credentials: 'include' })
-        if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
           window.location.href = '/admin'
           return
         }
 
-        const data = await response.json()
+        const data = await readApiResponse(response)
         setUsers(data.results || [])
+      } catch (err) {
+        setError(getApiErrorMessage(err))
       } finally {
         setLoading(false)
       }
@@ -26,6 +30,7 @@ export default function AdminUsersPage() {
   }, [])
 
   if (loading) return <div className="min-h-screen bg-slate-100 p-8">Chargement…</div>
+  if (error) return <div className="min-h-screen bg-slate-100 p-8 text-red-700">{error}</div>
 
   return (
     <div className="min-h-screen bg-slate-100 p-8 text-slate-900">

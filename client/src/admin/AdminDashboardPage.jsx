@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import { getApiErrorMessage, readApiResponse } from './adminApi'
 
 const API_URL = 'http://localhost:8000/api/v1/admin'
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -14,13 +16,15 @@ export default function AdminDashboardPage() {
           headers: { 'Content-Type': 'application/json' },
         })
 
-        if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
           window.location.href = '/admin'
           return
         }
 
-        const data = await response.json()
+        const data = await readApiResponse(response)
         setStats(data)
+      } catch (err) {
+        setError(getApiErrorMessage(err))
       } finally {
         setLoading(false)
       }
@@ -29,8 +33,12 @@ export default function AdminDashboardPage() {
     load()
   }, [])
 
-  if (loading || !stats) {
+  if (loading) {
     return <div className="min-h-screen bg-slate-100 p-8 text-slate-700">Chargement du dashboard…</div>
+  }
+
+  if (error || !stats) {
+    return <div className="min-h-screen bg-slate-100 p-8 text-red-700">{error || 'Les données du dashboard sont indisponibles.'}</div>
   }
 
   const cards = [

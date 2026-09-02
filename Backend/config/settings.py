@@ -20,8 +20,7 @@ DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 ALLOWED_HOSTS = os.environ.get(
     "ALLOWED_HOSTS",
-    "localhost,127.0.0.1,0.0.0.0,[::1],backend",
-    '.ngrok-free.dev',
+    "localhost,127.0.0.1,0.0.0.0,[::1],backend,.ngrok-free.dev",
 ).split(",")
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS if host.strip()]
 
@@ -39,7 +38,7 @@ CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         "CSRF_TRUSTED_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:19006,http://127.0.0.1:19006,https://localhost,https://127.0.0.1,https://backend",
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:19006,http://127.0.0.1:19006,https://localhost,https://127.0.0.1,https://backend",
     ).split(",")
     if origin.strip()
 ]
@@ -48,7 +47,7 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         "CORS_ALLOWED_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:19006,http://127.0.0.1:19006",
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:19006,http://127.0.0.1:19006",
     ).split(",")
     if origin.strip()
 ]
@@ -66,6 +65,7 @@ CORS_EXPOSE_HEADERS = ["Content-Type", "X-CSRFToken"]
 # Application definition
 
 INSTALLED_APPS = [
+    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',

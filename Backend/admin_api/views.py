@@ -28,7 +28,7 @@ class AdminLoginView(APIView):
         if user is None or not getattr(user, 'is_active', False):
             return Response({'detail': 'Identifiants invalides.'}, status=401)
 
-        role = getattr(user, 'role', 'reader')
+        role = 'super_admin' if user.is_superuser else getattr(user, 'role', 'reader')
         if role not in {'super_admin', 'editor'}:
             return Response({'detail': 'Compte non autorisé au panneau d’administration.'}, status=403)
 

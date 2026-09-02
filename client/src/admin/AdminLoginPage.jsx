@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getApiErrorMessage, readApiResponse } from './adminApi'
 
 const API_URL = 'http://localhost:8000/api/v1/admin'
 
@@ -19,15 +20,12 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ username, password }),
       })
 
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.detail || 'Erreur de connexion')
-      }
+      const data = await readApiResponse(response)
 
       localStorage.setItem('admin_session', JSON.stringify(data))
       window.location.href = '/admin/dashboard'
     } catch (err) {
-      setError(err.message)
+      setError(getApiErrorMessage(err))
     }
   }
 
