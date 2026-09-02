@@ -21,6 +21,7 @@ DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 ALLOWED_HOSTS = os.environ.get(
     "ALLOWED_HOSTS",
     "localhost,127.0.0.1,0.0.0.0,[::1],backend",
+    '.ngrok-free.dev',
 ).split(",")
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS if host.strip()]
 
@@ -65,7 +66,6 @@ CORS_EXPOSE_HEADERS = ["Content-Type", "X-CSRFToken"]
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -86,6 +86,7 @@ INSTALLED_APPS = [
     #local apps
     "apps.documents",
     "apps.users",
+    "admin_api",
 ]
 
 SITE_ID = 1

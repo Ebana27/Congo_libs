@@ -1,0 +1,58 @@
+const books = [
+  {
+    id: 1,
+    title: 'Le Pleurer-Rire',
+    author: 'Henri Lopes',
+    category: 'Littérature congolaise',
+    rating: 4.8,
+    pages: 216,
+    cover: '',
+  },
+  {
+    id: 2,
+    title: 'La Vie et demie',
+    author: 'Sony Labou Tansi',
+    category: 'Roman',
+    rating: 4.9,
+    pages: 192,
+    cover: '',
+  },
+  {
+    id: 3,
+    title: 'Les petits garçons naissent aussi des étoiles',
+    author: 'Emmanuel Dongala',
+    category: 'Roman',
+    rating: 4.7,
+    pages: 284,
+    cover: '',
+  },
+  {
+    id: 4,
+    title: 'Verre Cassé',
+    author: 'Alain Mabanckou',
+    category: 'Littérature',
+    rating: 4.9,
+    pages: 220,
+    cover: '',
+  },
+  {
+    id: 5,
+    title: 'Lumières de Pointe-Noire',
+    author: 'Alain Mabanckou',
+    category: 'Récit',
+    rating: 4.6,
+    pages: 176,
+    cover: '',
+  },
+  {
+    id: 6,
+    title: 'African Psycho',
+    author: 'Alain Mabanckou',
+    category: 'Roman',
+    rating: 4.5,
+    pages: 152,
+    cover: '',
+  },
+]
+
+export default books
