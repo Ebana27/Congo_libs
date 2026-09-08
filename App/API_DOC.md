@@ -6,7 +6,8 @@ Documentation de l'API Django REST Framework pour l'application mobile Congolibs
 - **Sur un téléphone :** `http://<IP_DU_PC>:8000/api/v1` (ex. `http://192.168.1.25:8000/api/v1`)
 - **Swagger UI :** `http://127.0.0.1:8000/api/docs/`
 - **Schéma OpenAPI :** `http://127.0.0.1:8000/api/schema/`
-
+Lorem, ipsum dolor sit amet consectetur adipisicing elit. Explicabo debitis incidunt sequi quam, nihil neque iusto eaque dolorum repudiandae temporibus facere esse quaerat. Quisquam optio repellendus impedit hic, cum magni.
+- **URL WEB :** `ledevfreelance.pythonanywhere.com/api/v1`
 ---
 
 ## 1. Authentification

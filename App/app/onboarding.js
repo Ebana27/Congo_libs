@@ -1,24 +1,29 @@
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, StatusBar, View } from 'react-native';
 import { router } from 'expo-router';
 import { colors, typography } from '../src/constants/themes';
-
-const LOADING_DURATION = 3000;
+import { isSessionValid } from '../src/services/api/congolibsAPI';
 
 export default function Onboarding() {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      router.replace('/(tabs)');
-    }, LOADING_DURATION);
-
-    return () => clearTimeout(timer);
+    let mounted = true;
+    isSessionValid().then((valid) => {
+      if (!mounted) return;
+      router.replace(valid ? '/(tabs)' : '/auth/login');
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.logo}>Congolibs</Text>
-      <ActivityIndicator size="large" color={colors.primaryDark} />
-    </View>
+    <>
+      <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
+      <View style={styles.container}>
+        <Text style={styles.logo}>Congolibs</Text>
+        <ActivityIndicator size="large" color={colors.primaryDark} />
+      </View>
+    </>
   );
 }
 

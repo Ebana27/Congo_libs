@@ -4,7 +4,6 @@
     "slug": "congolibs",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "congolibs",
     "primaryColor": "#ECFCCB",
@@ -24,7 +23,13 @@
         "backgroundImage": "./assets/icons/android-icon-background.png",
         "monochromeImage": "./assets/icons/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "statusBar": {
+        "backgroundColor": "transparent",
+        "barStyle": "dark-content",
+        "translucent": true
+      },
+      "package": "com.anonymous.congolibs"
     },
     "web": {
       "bundler": "metro",

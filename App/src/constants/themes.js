@@ -1,24 +1,27 @@
 export const colors = {
-  primary: '#84CC16',
-  primaryDark: '#4D7C0F',
-  primaryLight: '#A3E635',
-  background: '#ECFCCB',
+  primary: '#7cf3bc',
+  primaryDark: '#088a49',
+  primaryLight: '#edf8f1',
+  background: '#edf8f1',
   surface: '#FFFFFF',
-  text: '#1A2E05',
-  textSecondary: '#5B6B3C',
-  border: '#BEF264',
-  danger: '#DC2626',
+  text: '#060a0d',
+  textSecondary: '#074a2b',
+  border: '#d5cdcd',
+  danger: '#ff5f3a',
 };
 
 export const fonts = {
-  poppins: 'Poppins',
+  poppinsRegular: 'Poppins-Regular',
+  poppinsMedium: 'Poppins-Medium',
+  poppinsSemiBold: 'Poppins-SemiBold',
+  poppinsBold: 'Poppins-Bold',
   inter: 'Inter',
 };
 
 export const typography = {
-  title: { fontFamily: fonts.poppins, fontSize: 24, fontWeight: '700', lineHeight: 32, color: colors.text },
-  subtitle: { fontFamily: fonts.poppins, fontSize: 18, fontWeight: '600', lineHeight: 26, color: colors.text },
-  body: { fontFamily: fonts.inter, fontSize: 16, lineHeight: 24, color: colors.text },
-  caption: { fontFamily: fonts.inter, fontSize: 13, lineHeight: 18, color: colors.textSecondary },
-  button: { fontFamily: fonts.inter, fontSize: 16, fontWeight: '600', color: colors.surface },
+  title: { fontFamily: fonts.poppinsBold, fontSize: 24, lineHeight: 38, color: colors.text, includeFontPadding: false },
+  subtitle: { fontFamily: fonts.poppinsSemiBold, fontSize: 18, lineHeight: 28, color: colors.text, includeFontPadding: false },
+  body: { fontFamily: fonts.inter, fontSize: 16, lineHeight: 24, color: colors.text, includeFontPadding: false },
+  caption: { fontFamily: fonts.inter, fontSize: 13, lineHeight: 20, color: colors.textSecondary, includeFontPadding: false },
+  button: { fontFamily: fonts.inter, fontSize: 16, fontWeight: '600', color: colors.surface, includeFontPadding: false },
 };

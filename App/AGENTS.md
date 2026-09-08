@@ -3,7 +3,7 @@
 Instructions pour les agents de code / collaborateurs travaillant sur l'application mobile.
 
 ## Projet
-
+@AGENTS : Use './API_DOC.md' for to Access the API documentation.
 - **Stack :** Expo SDK 57, React Native 0.86, React 19.2, **JavaScript** (pas de TypeScript).
 - **Navigation :** expo-router. Chaque fichier du dossier `app/` est une route.
 - **Icônes :** `lucide-react-native`.

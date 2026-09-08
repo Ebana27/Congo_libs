@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { fontAssets } from '../src/constants/fonts';
 import { useFonts } from 'expo-font';
+import { colors } from '../src/constants/themes';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -27,9 +28,17 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }}>
+      <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
         <Stack.Screen name="onboarding" />
+        <Stack.Screen name="auth/login" />
+        <Stack.Screen name="auth/signup" />
+        <Stack.Screen name="auth/resetpwd" />
         <Stack.Screen name="(tabs)" />
       </Stack>
     </SafeAreaProvider>
