@@ -19,6 +19,8 @@ from rest_framework.views import APIView
 from apps.users.api.serializers import UserSerializer
 from apps.users.models import User
 
+# Vue mobile : le token DRF est la source d'authentification.
+# Les appels authentifiés doivent passer par Authorization: Token <token>.
 
 class MobileAuthSerializer(serializers.Serializer):
     username = serializers.CharField(required=False, allow_blank=False)
@@ -29,6 +31,7 @@ class MobileAuthSerializer(serializers.Serializer):
 
 
 def get_or_create_user_token(user):
+    # Centralise la création/récupération du token unique côté mobile.
     token, _ = Token.objects.get_or_create(user=user)
     return token
 
@@ -61,6 +64,7 @@ class MobileLoginView(APIView):
 
 
 class MobileRegistrationView(APIView):
+    # Inscription mobile publique. Aucune dépendance au cookie CSRF du navigateur web.
     authentication_classes = [TokenAuthentication]
     permission_classes = [AllowAny]
 
@@ -101,6 +105,7 @@ class MobileRegistrationView(APIView):
 
 
 class MobileLogoutView(APIView):
+    # La déconnexion mobile doit supprimer le token serveur pour bloquer les anciennes sessions.
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
