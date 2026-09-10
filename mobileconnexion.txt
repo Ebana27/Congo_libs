@@ -1,0 +1,327 @@
+Congo Libs - Guide de consommation des APIs backend pour le client mobile
+=======================================================================
+
+Ce document explique comment appeler les endpoints backend du projet Congo Libs, de façon simple et cohérente, pour une application React Native / Expo.
+
+1. Architecture cible
+---------------------
+
+Le projet doit distinguer clairement :
+
+- Web Django / SessionAuthentication / Cookie / CSRF
+- Mobile React Native / TokenAuthentication / DRF Token
+
+Les endpoints mobiles doivent être consommés avec :
+
+- Authorization: Token <token>
+
+et ne doivent pas dépendre du CSRF Django.
+
+2. URL de base
+---------------
+
+Le client mobile utilise actuellement cette URL de base :
+
+https://ledevfreelance.pythonanywhere.com/api/v1
+
+Pour le développement local docker avec Django :
+
+http://localhost:8000/api/v1
+
+3. Authentification Mobile
+---------------------------
+
+Les endpoints mobile doivent respecter le contrat suivant :
+
+POST /users/auth/login-mobile/
+POST /users/auth/register-mobile/
+POST /users/auth/logout-mobile/
+GET  /users/auth/user/
+
+Les réponses doivent rester cohérentes et stables :
+
+{
+  "token": "xxxxxxxx",
+  "user_id": 123,
+  "user": {
+    "id": 123,
+    "username": "demo",
+    "email": "demo@example.com",
+    "first_name": "",
+    "last_name": "",
+    "telephone": "",
+    "ville": ""
+  }
+}
+
+Important : le frontend React Native attend la clé `token`, pas `key`.
+
+4. Enregistrement mobile
+-------------------------
+
+Endpoint :
+
+POST /users/auth/register-mobile/
+
+Payload attendu :
+
+{
+  "username": "demo",
+  "email": "demo@example.com",
+  "password1": "StrongPass123!",
+  "password2": "StrongPass123!"
+}
+
+Exigences de validation :
+
+- username obligatoire
+- email obligatoire
+- password1 obligatoire
+- password2 obligatoire
+- password1 == password2
+- mot de passe minimum 8 caractères
+- username unique
+- email unique
+
+En cas de succès :
+
+- création de l'utilisateur via `User.objects.create_user()`
+- création ou récupération du token DRF Token
+- retour JSON avec `token`, `user_id`, `user`
+
+Le token doit être immédiatement stocké côté mobile dans AsyncStorage :
+
+congolibs_auth_token
+
+5. Connexion mobile
+-------------------
+
+Endpoint :
+
+POST /users/auth/login-mobile/
+
+Payload attendu :
+
+{
+  "username": "demo",
+  "password": "StrongPass123!"
+}
+
+En cas de succès :
+
+- authentification Django par `authenticate()`
+- récupération du token DRF `Token.objects.get_or_create(user=user)`
+- renvoi du JSON :
+
+{
+  "token": token.key,
+  "user_id": user.id,
+  "user": UserSerializer(user).data
+}
+
+Le client mobile doit stocker le token comme suit :
+
+await AsyncStorage.setItem('congolibs_auth_token', token)
+
+6. Profil utilisateur courant
+------------------------------
+
+Endpoint :
+
+GET /users/auth/user/
+
+Cette route doit être consultée avec :
+
+Authorization: Token <token>
+
+Le client mobile doit ajouter l'en-tête automatiquement sur chaque requête authentifiée.
+
+Exemple d'interceptor Axios :
+
+api.interceptors.request.use(async (config) => {
+  const token = await AsyncStorage.getItem('congolibs_auth_token')
+  if (token) {
+    config.headers.Authorization = `Token ${token}`
+  }
+  return config
+})
+
+La vue backend concernée doit être `MobileCurrentUserView` et utiliser `IsAuthenticated` avec la classe d'authentification `TokenAuthentication`.
+
+7. Déconnexion mobile
+----------------------
+
+Endpoint :
+
+POST /users/auth/logout-mobile/
+
+Règle recommandée :
+
+- supprimer le token côté serveur avec `Token.objects.filter(user=request.user).delete()`
+- supprimer le token côté client dans AsyncStorage
+
+Ceci évite qu'un ancien token reste valable dans la base DRF.
+
+8. Consommation côté React Native
+----------------------------------
+
+Le service mobile doit suivre cette structure :
+
+import axios from 'axios'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+
+const API_URL = 'https://ledevfreelance.pythonanywhere.com/api/v1'
+
+const api = axios.create({
+  baseURL: API_URL,
+  timeout: 15000,
+  headers: {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  },
+})
+
+export const AUTH_TOKEN_STORAGE_KEY = 'congolibs_auth_token'
+
+api.interceptors.request.use(async (config) => {
+  const token = await AsyncStorage.getItem(AUTH_TOKEN_STORAGE_KEY)
+  if (token) {
+    config.headers.Authorization = `Token ${token}`
+  }
+  return config
+})
+
+export async function loginMobile(username, password) {
+  const response = await api.post('/users/auth/login-mobile/', { username, password })
+  const token = response.data?.token
+  if (token) {
+    await AsyncStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token)
+  }
+  return response.data
+}
+
+export async function registerMobile({ username, email, password1, password2 }) {
+  const response = await api.post('/users/auth/register-mobile/', {
+    username,
+    email,
+    password1,
+    password2,
+  })
+  const token = response.data?.token
+  if (token) {
+    await AsyncStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token)
+  }
+  return response.data
+}
+
+export async function logoutMobile() {
+  try {
+    await api.post('/users/auth/logout-mobile/')
+  } finally {
+    await AsyncStorage.removeItem(AUTH_TOKEN_STORAGE_KEY)
+  }
+}
+
+export async function fetchCurrentUser() {
+  return api.get('/users/auth/user/')
+}
+
+9. Gestion du flux du token
+---------------------------
+
+Exigences côté mobile :
+
+- le token est obtenu au login et à l'inscription
+- le token est stocké dans AsyncStorage
+- le token est envoyé dans l'en-tête `Authorization: Token <token>`
+- le token serveur peut être supprimé lors du logout mobile
+- le client doit remplacer le token local par un token vide ou le retirer lors du logout
+
+10. Contraintes de sécurité
+----------------------------
+
+- ne pas supprimer le middleware CSRF globalement
+- ne pas utiliser `csrf_exempt` sur les points d'entrée mobile
+- ne pas mélanger les vues Web et Mobile
+- conserver la protection CSRF sur les vues Web Django
+- conserver `SessionAuthentication` pour le web
+- utiliser `TokenAuthentication` pour le mobile uniquement
+
+11. Tests de validation backend
+---------------------------------
+
+Les tests backend doivent vérifier :
+
+1. inscription mobile réussie
+2. inscription avec username déjà existant
+3. inscription avec email déjà utilisé
+4. mots de passe différents
+5. login mobile réussi
+6. mauvais mot de passe
+7. récupération du profil avec token
+8. requête profil sans token
+9. requête profil avec token invalide
+10. logout mobile
+11. connexion web
+12. formulaire web avec CSRF
+13. Django Admin
+14. aucune API mobile ne doit déclencher une erreur CSRF
+
+12. Résumé pratique
+-------------------
+
+Pour le client mobile :
+
+- appeler `registerMobile()` à l'inscription
+- appeler `loginMobile()` à la connexion
+- stocker `data.token` dans `AsyncStorage`
+- appeler `fetchCurrentUser()` avec `Authorization: Token <token>`
+- appeler `logoutMobile()` pour déconnecter proprement
+
+13. Exemple complet de flux
+---------------------------
+
+# Inscription
+POST /users/auth/register-mobile/
+
+{
+  "username": "demo",
+  "email": "demo@example.com",
+  "password1": "StrongPass123!",
+  "password2": "StrongPass123!"
+}
+
+# Réponse
+{
+  "token": "...",
+  "user_id": 123,
+  "user": {...}
+}
+
+# Stockage local
+await AsyncStorage.setItem('congolibs_auth_token', token)
+
+# Login
+POST /users/auth/login-mobile/
+
+{
+  "username": "demo",
+  "password": "StrongPass123!"
+}
+
+# Profil
+GET /users/auth/user/
+Authorization: Token <token>
+
+# Logout
+POST /users/auth/logout-mobile/
+Authorization: Token <token>
+
+14. Points d'attention pour le React Native
+-------------------------------------------
+
+- Vérifier que l'application mobile n'envoie pas de cookies CSRF pour les endpoints mobiles.
+- S'assurer que l'URL base pointe vers le bon backend et la bonne version de l'API.
+- Ne pas envoyer `X-CSRFToken` sur les endpoints mobile.
+- Ne pas attendre `key` dans la réponse de login/register ; attendre `token`.
+- Rejouer les tests API dans le contexte Docker backend si vous modifiez les routes.
