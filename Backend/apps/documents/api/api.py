@@ -1,6 +1,6 @@
 import json
 import os
-
+from django.utils.decorators import method_decorator
 from django.contrib.auth import authenticate, login, logout
 from django.core.files.base import ContentFile
 from django.http import FileResponse
@@ -244,6 +244,6 @@ class LogoutView(generics.GenericAPIView):
 class SessionView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
-    @ensure_csrf_cookie
+    @method_decorator(ensure_csrf_cookie)
     def get(self, request, *args, **kwargs):
         return Response({"user": UserSerializer(request.user).data})
