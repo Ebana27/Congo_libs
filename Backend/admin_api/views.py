@@ -4,6 +4,8 @@ from datetime import datetime
 from django.contrib.auth import authenticate, login, logout
 from django.db.models import Count, Q
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -12,6 +14,14 @@ from rest_framework.views import APIView
 from apps.documents.models import Document, Telechargement
 from apps.users.models import User
 from .permissions import IsAdminUser
+
+
+@method_decorator(ensure_csrf_cookie, name='get')
+class AdminCSRFView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        return Response({'detail': 'CSRF cookie ready.'})
 
 
 class AdminLoginView(APIView):

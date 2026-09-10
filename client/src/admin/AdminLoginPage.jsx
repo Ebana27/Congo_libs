@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getApiErrorMessage, readApiResponse } from './adminApi'
+import { getApiErrorMessage, getCookie, readApiResponse } from './adminApi'
 
 const API_URL = 'http://localhost:8000/api/v1/admin'
 
@@ -13,9 +13,18 @@ export default function AdminLoginPage() {
     setError('')
 
     try {
+      await fetch(`${API_URL}/auth/csrf/`, {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      const csrfToken = getCookie('csrftoken')
       const response = await fetch(`${API_URL}/auth/login/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
         credentials: 'include',
         body: JSON.stringify({ username, password }),
       })

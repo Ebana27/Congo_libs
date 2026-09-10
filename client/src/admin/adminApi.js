@@ -1,3 +1,13 @@
+export function getCookie(name) {
+  const cookieHeader = typeof document === 'undefined' ? '' : document.cookie
+  const parts = cookieHeader.split('; ').find((item) => item.startsWith(`${name}=`))
+  if (!parts) {
+    return ''
+  }
+
+  return decodeURIComponent(parts.split('=').slice(1).join('='))
+}
+
 export async function readApiResponse(response) {
   const contentType = response.headers.get('content-type') || ''
 

@@ -16,6 +16,11 @@ class AdminApiTests(APITestCase):
         self.admin.role = 'super_admin'
         self.admin.save(update_fields=['role'])
 
+    def test_admin_csrf_endpoint_sets_cookie(self):
+        response = self.client.get(reverse('admin_csrf'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('csrftoken', response.cookies)
+
     def test_admin_login_success(self):
         response = self.client.post(
             reverse('admin_login'),
