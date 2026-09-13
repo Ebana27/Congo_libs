@@ -1,14 +1,15 @@
 import { Bell } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, typography } from '../constants/themes';
+import { colors, typography } from '../../constants/themes';
+import { router } from 'expo-router';
 
 export default function Header({ title }) {
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
       <View style={styles.container}>
         <Text style={styles.title}>{title}</Text>
-        <Pressable accessibilityLabel="Notifications" hitSlop={8} style={styles.iconButton}>
+        <Pressable accessibilityLabel="Notifications" hitSlop={8} style={styles.iconButton} onPress={() => router.push('/notifications')}>
           <Bell size={22} color={colors.text} />
         </Pressable>
       </View>

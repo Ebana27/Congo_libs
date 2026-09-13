@@ -1,11 +1,11 @@
-import { StyleSheet, View, Text, TextInput, Pressable } from 'react-native';
+import { StyleSheet, View, Text, TextInput, Pressable, StatusBar } from 'react-native';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react-native';
 import { colors, typography } from '../../src/constants/themes';
 import { postCall } from '../../src/services/api/congolibsAPI';
-import ErrorModal from '../../src/components/ErrorModal';
-import SuccessModal from '../../src/components/SuccessModal';
+import ErrorModal from '../../src/components/shared/ErrorModal';
+import SuccessModal from '../../src/components/shared/SuccessModal';
 
 export default function ResetPassword() {
   const [email, setEmail] = useState('');
@@ -32,6 +32,7 @@ export default function ResetPassword() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
       {/* Flèche de retour en arrière */}
       <Pressable style={styles.arrowContainer} onPress={() => router.back()}>
         <ArrowLeft size={24} color={colors.primaryDark} />

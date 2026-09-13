@@ -15,23 +15,34 @@ Instructions pour les agents de code / collaborateurs travaillant sur l'applicat
 App/
 ├── app/                 # écrans + layouts (expo-router)
 │   ├── _layout.js       # layout racine (Stack + splash)
-│   ├── onboarding.js    # écran de chargement (3s) puis → /(tabs)
-│   └── (tabs)/
-│       ├── _layout.js   # navigation par onglets + header custom
-│       ├── index.js     # Accueil « Congolibs »
-│       ├── library.js   # Bibliothèque
-│       └── profil.js    # Profil
+│   ├── (tabs)/          # navigation par onglets + header custom
+│   │   ├── _layout.js   # onglets (Accueil, Bibliothèque, Découverte, Profil…)
+│   │   ├── index.js     # Accueil « Congolibs »
+│   │   ├── library.js   # Bibliothèque
+│   │   ├── discovery.js # Découverte
+│   │   ├── add.js       # Ajouter un document (bientôt disponible)
+│   │   └── profil.js    # Profil
+│   ├── auth/            # Connexion / inscription / mot de passe
+│   ├── onboarding/      # Slides d'introduction (index = splash + check API)
+│   ├── document/        # Vue détail d'un document ([id].js)
+│   └── *.js             # Écrans autonomes (settings, notifications, help, webview)
 ├── src/
-│   ├── components/      # composants réutilisables (Header.js…)
+│   ├── components/      # composants regroupés par feature
+│   │   ├── shared/      #   réutilisables (ErrorModal, SuccessModal, Header…)
+│   │   ├── books/       #   livraison de contenus (BookCard, Filter, CollectionCard)
+│   │   ├── discovery/   #   Découverte (DiscoveryCard)
+│   │   ├── profil/      #   Profil (ConfirmModal)
+│   │   └── onboarding/  #   Onboarding (OnboardingIllustrations)
 │   ├── constants/       # themes.js, fonts.js
 │   ├── context/         # React Context (auth, thème…)
 │   ├── hooks/           # hooks personnalisés
 │   ├── services/        # client API (voir API_DOC.md)
 │   └── utils/           # fonctions utilitaires
-├── assets/
+├── assets/             # organisés par feature
 │   ├── fonts/           # polices Poppins / Inter (.ttf)
-│   ├── icons/           # icônes de l'app (icon, adaptive…)
-│   ├── images/          # images d'interface
+│   ├── icons/           # icônes de l'app (icon, adaptive…) + external_icons/
+│   ├── images/          # images par feature (auth/, home/…)
+│   ├── onboarding/      # visuels des slides d'introduction
 │   └── splash/          # image du splash screen
 └── API_DOC.md           # documentation de l'API backend
 ```
@@ -43,8 +54,10 @@ App/
 3. Ajouter un écran = créer un fichier dans `app/` + le déclarer dans le layout concerné.
 4. Polices : placer les `.ttf` dans `assets/fonts/` puis les enregistrer via `src/constants/fonts.js`.
 5. Icônes : utiliser `lucide-react-native`, taille/color passées en props.
-6. Pas de commentaires dans le code sauf demande explicite de l'utilisateur.
-7. Pas de fichiers générés (`.expo/`, `node_modules/`) : ils sont dans `.gitignore`.
+6. Composants : les mettre dans `src/components/<feature>/` (jamais directement dans `src/components/`).
+7. Assets : les ranger par feature dans `assets/<feature>/` (ex. `assets/onboarding/`).
+8. Pas de commentaires dans le code sauf demande explicite de l'utilisateur.
+9. Pas de fichiers générés (`.expo/`, `node_modules/`) : ils sont dans `.gitignore`.
 
 ## Commandes
 

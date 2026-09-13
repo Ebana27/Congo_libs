@@ -1,52 +1,116 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, StatusBar } from 'react-native';
+import { router } from 'expo-router';
 import { colors, fonts } from '../../src/constants/themes';
-import DiscoveryCard from '../../src/components/DiscoveryCard';
-import { Star, Book, BookOpen, Heart, BadgeCheck, TrendingUp } from 'lucide-react-native';
+import DiscoveryCard from '../../src/components/discovery/DiscoveryCard';
+import {
+  GraduationCap,
+  Landmark,
+  Feather,
+  BookOpen,
+  Newspaper,
+  Target,
+  Star,
+  ArrowRight,
+} from 'lucide-react-native';
+
+const CATEGORIES = [
+  { title: 'BAC', description: 'Fiches, annales et sujets corrigés', Icon: GraduationCap, bg: '#7CC96B' },
+  { title: 'Université', description: 'Cours, mémoires et thèses', Icon: Landmark, bg: '#0B6B3A' },
+  { title: 'Littérature congolaise', description: 'Romans, nouvelles, poèmes', Icon: Feather, bg: '#4FD1D9' },
+  { title: 'Romans', description: 'Classiques et contemporains', Icon: BookOpen, bg: '#4CAF50' },
+  { title: 'Revues et magazines', description: 'Culture, société, économie', Icon: Newspaper, bg: '#0B6B3A' },
+  { title: 'Développement personnel', description: 'Compétences et motivation', Icon: Target, bg: '#45C4BC' },
+];
 
 export default function Decouverte() {
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={true}>
-      <View style={styles.cards}>
-        <DiscoveryCard title="BAC" Description="Fiches, annales et sujets corrigés" Icon={<Star />} bg="#ead" />
-        <DiscoveryCard title="Université" Description="Cours, mémoires et thèses" Icon={<Book />} bg="#aaaeee" />
-        <DiscoveryCard title="Littérature Congolaise" Description="Romans, nouvelles, poèmes" Icon={<BookOpen />} bg="#ccc" />
-        <DiscoveryCard title="Romans" Description="Classiques et contemporains" Icon={<Heart />} bg="#bbb021" />
-        <DiscoveryCard title="Revues et magazines" Description="Culture, société, économie" Icon={<BadgeCheck />} bg="#aa999e" />
-        <DiscoveryCard title="Développement Personnel" Description="Compétences et motivation" Icon={<TrendingUp />} bg="#dd3459" />
-      </View>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Concours & Opportunités</Text>
-        <Text style={styles.cardSubtitle}>Bourses, concours, offres et appels à candidatures</Text>
-      </View>
-    </ScrollView>
+    <View style={styles.container}>
+      <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
+        {CATEGORIES.map((item) => (
+          <DiscoveryCard
+            key={item.title}
+            title={item.title}
+            description={item.description}
+            Icon={item.Icon}
+            bg={item.bg}
+            onPress={() => router.push('/library')}
+          />
+        ))}
+
+        {/* Concours & opportunités */}
+        <Pressable style={({ pressed }) => [styles.opportunityCard, pressed && styles.pressed]} onPress={() => router.push('/library')}>
+          <View style={styles.opportunityIcon}>
+            <Star size={26} color={colors.primaryDark} fill={colors.primaryDark} />
+          </View>
+
+          <View style={styles.opportunityContent}>
+            <Text style={styles.opportunityTitle}>Concours & opportunités</Text>
+            <Text style={styles.opportunitySubtitle}>
+              Bourses, concours, offres et appels à candidatures
+            </Text>
+          </View>
+
+          <View style={styles.opportunityArrow}>
+            <ArrowRight size={18} color={colors.surface} />
+          </View>
+        </Pressable>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
-  cards: {
+  list: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 24,
+    gap: 12,
+  },
+  opportunityCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-  },
-  card: {
-    marginHorizontal: 16,
-    marginVertical: 8,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 16,
     padding: 16,
-    borderRadius: 12,
-    backgroundColor: colors.border,
+    gap: 14,
+    marginTop: 8,
   },
-  cardTitle: {
+  opportunityIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  opportunityContent: {
+    flex: 1,
+  },
+  opportunityTitle: {
     fontFamily: fonts.poppinsSemiBold,
-    fontSize: 18,
-    color: colors.text,
+    fontSize: 17,
+    color: colors.primaryDark,
   },
-  cardSubtitle: {
+  opportunitySubtitle: {
     fontFamily: fonts.inter,
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
-    marginTop: 4,
+    marginTop: 2,
+  },
+  opportunityArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

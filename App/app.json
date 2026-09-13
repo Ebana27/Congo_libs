@@ -45,7 +45,8 @@
           "image": "./assets/splash/splash-icon.png",
           "imageWidth": 200
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

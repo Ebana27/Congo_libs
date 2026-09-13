@@ -14,13 +14,13 @@ import { ArrowLeft, EyeIcon, EyeOffIcon } from 'lucide-react-native';
 import { colors, typography } from '../../src/constants/themes';
 
 // Services : API congolibs
-import { postCall, primeCsrfToken, setCsrfToken } from '../../src/services/api/congolibsAPI';
+import { login } from '../../src/services/api/congolibsAPI';
 
 // Composant
 // -------------------
 // Modales
-import ErrorModal from '../../src/components/ErrorModal';
-import SuccessModal from '../../src/components/SuccessModal';
+import ErrorModal from '../../src/components/shared/ErrorModal';
+import SuccessModal from '../../src/components/shared/SuccessModal';
 
 // Fonction par défaut
 export default function Login() {
@@ -40,9 +40,7 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      await primeCsrfToken();
-      const data = await postCall('/users/login/', { username, password });
-      setCsrfToken(data.csrfToken);
+      await login(username, password);
       setSuccessMessage('Connexion réussie. Bienvenue dans votre bibliothèque.');
     } catch (e) {
       setErrorMessage(e.message || 'Identifiants invalides.');
@@ -55,8 +53,7 @@ export default function Login() {
     <View style={styles.container}>
       <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
 
-      {/* Flèche de retour en arrière */}
-      <Pressable style={styles.arrowContainer} onPress={() => router.back()}>
+      <Pressable style={styles.arrowContainer} onPress={() => router.push('/onboarding/intro')}>
         <ArrowLeft size={24} color={colors.primaryDark} />
       </Pressable>
 
@@ -147,11 +144,11 @@ export default function Login() {
         </View>
       </View>
 
-      <Link href="/">
-        <Text style={styles.tempButton}>
+      {/* <Link href="/" style={styles.tempButton}>
+        <Text style={styles.tempButtonText}>
           Accueil
         </Text>
-      </Link>
+      </Link>*/}
 
       {/* Modale d'erreur */}
       <ErrorModal visible={!!errorMessage} message={errorMessage} onClose={() => setErrorMessage(null)} />
@@ -304,7 +301,7 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.primaryDark,
     padding: 10,
     borderRadius: 5,
-    marginTop: 30,
+    marginTop: 0,
     alignItems: 'center',
   },
   tempButtonText: {

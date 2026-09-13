@@ -10,7 +10,7 @@ import { colors } from '../src/constants/themes';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export const unstable_settings = {
-  initialRouteName: 'onboarding',
+  initialRouteName: 'onboarding/index',
 };
 
 export default function RootLayout() {
@@ -32,13 +32,16 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
+          animation: 'none',
           contentStyle: { backgroundColor: colors.background },
         }}
       >
-        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="onboarding/index" />
+        <Stack.Screen name="onboarding/intro" />
         <Stack.Screen name="auth/login" />
         <Stack.Screen name="auth/signup" />
         <Stack.Screen name="auth/resetpwd" />
+        <Stack.Screen name="document/[id]" />
         <Stack.Screen name="(tabs)" />
       </Stack>
     </SafeAreaProvider>

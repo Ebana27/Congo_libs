@@ -1,7 +1,7 @@
-// src/components/Toast.js
+// src/components/shared/Toast.js
 import { View, Text, StyleSheet } from 'react-native';
 import { CheckCircle2, XCircle } from 'lucide-react-native';
-import { colors, typography } from '../constants/themes';
+import { colors, typography } from '../../constants/themes';
 
 // Composant simple pour afficher un message de succès ou d'erreur
 // Utilisation : <Toast type="success" message="Compte créé avec succès" />

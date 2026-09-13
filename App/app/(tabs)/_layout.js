@@ -1,8 +1,9 @@
 import { memo } from 'react';
 import { Tabs } from 'expo-router';
 import { BookOpen, Compass, Home, Plus, User, PlusCircle } from 'lucide-react-native';
-import Header from '../../src/components/Header';
+import Header from '../../src/components/shared/Header';
 import { colors } from '../../src/constants/themes';
+import { Pressable } from 'react-native';
 
 const TITLES = {
   index: 'CONGOLIBS',
@@ -22,6 +23,7 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         header: ({ route }) => <Header title={TITLES[route.name] || 'Congolibs'} />,
+        freezeOnBlur: true,
         sceneStyle: {
           backgroundColor: colors.background,
         },
@@ -32,7 +34,22 @@ export default function TabsLayout() {
           height: 90,
           paddingTop: 10,
           borderColor: "transparent",
+          elevation: 0,
         },
+        tabBarButton: (props) => (
+          <Pressable
+            {...props}
+            android_ripple={null}
+            style={[props.style, ({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })]}
+          />
+        ),
+        tabBarShowLabel: true, // Garder les textes globalement
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontFamily: 'Poppins-SemiBold',
+        },
+        // Masque le texte sur Android/iOS si l'onglet n'est pas actif (option native de React Navigation)
+        tabBarHideOnKeyboard: true,
       }}
     >
       <Tabs.Screen

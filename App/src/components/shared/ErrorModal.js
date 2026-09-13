@@ -1,13 +1,13 @@
-// src/components/SuccessModal.js
+// src/components/shared/ErrorModal.js
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import { CheckCircle2 } from "lucide-react-native";
-import { colors, typography } from "../constants/themes";
+import { AlertCircle } from "lucide-react-native";
+import { colors, typography } from "../../constants/themes";
 
-export default function SuccessModal({
+export default function ErrorModal({
   visible,
   message,
-  title = "Succès",
-  buttonText = "OK",
+  title = "Erreur",
+  buttonText = "Fermer",
   onClose,
 }) {
   return (
@@ -15,7 +15,7 @@ export default function SuccessModal({
       <View style={styles.overlay}>
         <View style={styles.card}>
           <View style={styles.iconBadge}>
-            <CheckCircle2 size={30} color={colors.primaryDark} />
+            <AlertCircle size={30} color={colors.danger} />
           </View>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: "#ffe9e4",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   },
   button: {
     width: "100%",
-    backgroundColor: colors.primaryDark,
+    backgroundColor: colors.danger,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",

@@ -13,9 +13,9 @@ import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import { ArrowLeft, EyeIcon, EyeOffIcon, Check } from 'lucide-react-native';
 import { colors, typography } from '../../src/constants/themes';
-import { postCall } from '../../src/services/api/congolibsAPI';
-import ErrorModal from '../../src/components/ErrorModal';
-import SuccessModal from '../../src/components/SuccessModal';
+import { register } from '../../src/services/api/congolibsAPI';
+import ErrorModal from '../../src/components/shared/ErrorModal';
+import SuccessModal from '../../src/components/shared/SuccessModal';
 
 // Rayon des coins de la carte blanche, déclaré une seule fois pour garder le design cohérent
 const cardRadius = 28;
@@ -50,12 +50,7 @@ export default function Signup() {
     }
     setLoading(true);
     try {
-      await postCall('/users/auth/registration/', {
-        username,
-        email,
-        password1: password,
-        password2: confirmPassword,
-      });
+      await register({ username, email, password1: password, password2: confirmPassword });
       setSuccessMessage('Compte créé avec succès. Vous pouvez maintenant vous connecter.');
     } catch (e) {
       setErrorMessage(e.message || 'Une erreur est survenue.');

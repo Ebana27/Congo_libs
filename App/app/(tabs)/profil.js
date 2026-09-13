@@ -1,149 +1,408 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
-import { Settings, LogOut } from 'lucide-react-native';
+import {
+  Settings,
+  LogOut,
+  ChevronRight,
+  Download,
+  Heart,
+  HelpCircle,
+  Info,
+  Pencil,
+} from 'lucide-react-native';
 import { colors, typography, fonts } from '../../src/constants/themes';
-import { getCall, logout as apiLogout } from '../../src/services/api/congolibsAPI';
+import { getCurrentUser, logout as apiLogout } from '../../src/services/api/congolibsAPI';
+import ConfirmModal from '../../src/components/profil/ConfirmModal';
+
+function MenuItem({ icon: Icon, label, onPress, danger = false, last = false }) {
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.menuItem,
+        !last && styles.menuItemDivider,
+        pressed && styles.pressed,
+      ]}
+      onPress={onPress}
+    >
+      <View style={styles.menuLeft}>
+        <View style={[styles.menuBubble, danger && styles.menuBubbleDanger]}>
+          <Icon size={18} color={danger ? colors.danger : colors.primaryDark} />
+        </View>
+        <Text style={[styles.menuText, danger && styles.menuTextDanger]}>
+          {label}
+        </Text>
+      </View>
+      <ChevronRight size={18} color={colors.border} />
+    </Pressable>
+  );
+}
 
 export default function ProfilScreen() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
   useEffect(() => {
-    getCall('/users/session/')
-      .then((data) => setUser(data.user || null))
+    getCurrentUser()
+      .then((data) => setUser(data))
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, []);
 
+  // Déclenché uniquement après confirmation dans la modale
   const handleLogout = async () => {
+    setConfirmVisible(false);
     setLoggingOut(true);
     await apiLogout();
     router.replace('/auth/login');
   };
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.inner}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {user ? (user.first_name || user.username || '?').charAt(0).toUpperCase() : '?'}
+  const getInitials = () => {
+    if (!user) return '?';
+    if (user.first_name && user.last_name) {
+      return (user.first_name[0] + user.last_name[0]).toUpperCase();
+    }
+    return (user.first_name || user.username || '?').charAt(0).toUpperCase();
+  };
+
+  const fullName = user
+    ? [user.first_name, user.last_name].filter(Boolean).join(' ') ||
+      user.username ||
+      'Utilisateur'
+    : 'Utilisateur';
+
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
+        <ActivityIndicator color={colors.primaryDark} size="large" />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.simpleContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
+        <View style={styles.card}>
+          <Text style={styles.name}>Non connecté</Text>
+          <Text style={styles.email}>
+            Connecte-toi pour accéder à ton profil et à tes documents.
           </Text>
+          <Pressable
+            style={({ pressed }) => [styles.loginButton, pressed && styles.pressed]}
+            onPress={() => router.replace('/auth/login')}
+          >
+            <Text style={styles.loginText}>Se connecter</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
+      {/* ── Identité ── */}
+      <View style={styles.identity}>
+        <View style={styles.avatarWrapper}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{getInitials()}</Text>
+          </View>
+          {/* TODO : brancher la route édition du profil */}
+          <Pressable style={styles.editBadge} onPress={() => router.push('/settings')} hitSlop={8}>
+            <Pencil size={13} color={colors.primaryDark} />
+          </Pressable>
         </View>
 
-        {loading ? (
-          <ActivityIndicator color={colors.primaryDark} style={styles.loader} />
-        ) : (
-          <View style={styles.info}>
-            <Text style={styles.name}>
-              {user ? user.first_name || user.username : 'Utilisateur'}
-            </Text>
-            <Text style={styles.email}>
-              {user ? user.email : ''}
-            </Text>
-          </View>
-        )}
-
-        <Pressable
-          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-          onPress={() => router.push('/auth/resetpwd')}
-        >
-          <Settings size={20} color={colors.primaryDark} />
-          <Text style={styles.buttonText}>Paramètres</Text>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [styles.logoutButton, pressed && styles.buttonPressed]}
-          onPress={handleLogout}
-          disabled={loggingOut}
-        >
-          <LogOut size={20} color={colors.surface} />
-          <Text style={styles.logoutText}>
-            {loggingOut ? 'Déconnexion...' : 'Se déconnecter'}
+        <Text style={styles.name} numberOfLines={1}>
+          {fullName}
+        </Text>
+        {user.email ? (
+          <Text style={styles.email} numberOfLines={1}>
+            {user.email}
           </Text>
-        </Pressable>
+        ) : null}
       </View>
-    </View>
+
+      {/* ── Stats ── */}
+      <View style={styles.card}>
+        <View style={styles.statsRow}>
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statLabel}>Téléchargements</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statLabel}>Favoris</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statLabel}>En cours</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* ── Menu ── */}
+      <View style={styles.card}>
+        <MenuItem
+          icon={Download}
+          label="Mes téléchargements"
+          onPress={() => router.push('/library')}
+        />
+        <MenuItem
+          icon={Heart}
+          label="Mes favoris"
+          onPress={() =>
+            router.push({ pathname: '/library', params: { filter: 'Favoris' } })
+          }
+        />
+        <MenuItem
+          icon={Settings}
+          label="Paramètres"
+          onPress={() => router.push('/settings')}
+        />
+        <MenuItem
+          icon={HelpCircle}
+          label="Aide & support"
+          onPress={() => router.push('/help')}
+        />
+        <MenuItem
+          icon={Info}
+          label="À propos de Congolibs"
+          onPress={() =>
+            router.push({
+              pathname: '/webview',
+              params: {
+                url: 'https://congolibs.netlify.app/public/src/html/a-propos',
+                title: 'À propos de Congolibs',
+              },
+            })
+          }
+          last
+        />
+      </View>
+
+      {/* ── Déconnexion ── */}
+      <Pressable
+        style={({ pressed }) => [styles.logoutButton, pressed && styles.pressed]}
+        onPress={() => setConfirmVisible(true)}
+        disabled={loggingOut}
+      >
+        <LogOut size={20} color={colors.danger} />
+        <Text style={styles.logoutText}>
+          {loggingOut ? 'Déconnexion...' : 'Se déconnecter'}
+        </Text>
+      </Pressable>
+
+      <Text style={styles.version}>Congolibs v1.0.0</Text>
+
+      {/* ── Avertissement avant déconnexion ── */}
+      <ConfirmModal
+        visible={confirmVisible}
+        title="Se déconnecter ?"
+        message="Tu devras te reconnecter pour accéder à tes documents téléchargés."
+        confirmText="Se déconnecter"
+        cancelText="Annuler"
+        onClose={() => setConfirmVisible(false)}
+        onConfirm={handleLogout}
+      />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface, // ← page blanche
+  },
+  loaderContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-  },
-  inner: {
-    width: '100%',
-    maxWidth: 360,
-    alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: 24,
-    paddingVertical: 32,
-    paddingHorizontal: 24,
+  },
+  content: {
+    padding: 16,
+    paddingBottom: 40,
+    gap: 14,
+  },
+  simpleContent: {
+    padding: 16,
+    paddingTop: 32,
+  },
+
+  // ── Identité ──
+  identity: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 14,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 92,
+    height: 92,
+    borderRadius: 46,
     backgroundColor: colors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
   },
   avatarText: {
     fontFamily: fonts.poppinsBold,
     fontSize: 34,
     color: colors.surface,
   },
-  loader: {
-    marginTop: 20,
-  },
-  info: {
+  editBadge: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.surface,
     alignItems: 'center',
-    marginBottom: 32,
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.primaryLight,
   },
   name: {
     ...typography.subtitle,
     fontSize: 20,
+    textAlign: 'center',
   },
   email: {
     ...typography.caption,
     marginTop: 4,
+    textAlign: 'center',
   },
-  button: {
+
+  // ── Cartes ──
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(6, 10, 13, 0.07)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    width: '100%',
-    backgroundColor: colors.background,
-    borderRadius: 14,
-    paddingVertical: 14,
-    marginBottom: 12,
+    paddingVertical: 10,
   },
-  buttonText: {
-    ...typography.body,
-    fontWeight: '600',
+  stat: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  statValue: {
+    ...typography.subtitle,
+    fontSize: 20,
     color: colors.primaryDark,
   },
+  statLabel: {
+    ...typography.caption,
+    fontSize: 12,
+  },
+  statDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 34,
+    backgroundColor: colors.border,
+  },
+
+  // ── Menu ──
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 13,
+  },
+  menuItemDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  menuLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  menuBubble: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(8, 138, 73, 0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuBubbleDanger: {
+    backgroundColor: 'rgba(255, 95, 58, 0.10)',
+  },
+  menuText: {
+    ...typography.body,
+    fontSize: 15,
+  },
+  menuTextDanger: {
+    color: colors.danger,
+  },
+
+  // ── État non connecté ──
+  loginButton: {
+    backgroundColor: colors.primaryDark,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  loginText: {
+    ...typography.button,
+  },
+
+  // ── Déconnexion ──
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    width: '100%',
-    backgroundColor: colors.danger,
-    borderRadius: 14,
-    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 95, 58, 0.35)',
+    backgroundColor: 'rgba(255, 95, 58, 0.06)',
+    borderRadius: 16,
+    paddingVertical: 15,
   },
   logoutText: {
     ...typography.button,
+    color: colors.danger,
   },
-  buttonPressed: {
+  version: {
+    ...typography.caption,
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+
+  pressed: {
     opacity: 0.7,
   },
 });

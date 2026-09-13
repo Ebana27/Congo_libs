@@ -1,93 +1,86 @@
+import { Platform } from "react-native";
 import axios from "axios";
+import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_URL = (process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1").replace(/\/$/, "");
+const API_URL = (
+  process.env.EXPO_PUBLIC_API_URL ||
+  "https://ledevfreelance.pythonanywhere.com/api/v1"
+).replace(/\/$/, "");
 
-const API_ORIGIN = API_URL.includes("/api/") ? API_URL.slice(0, API_URL.indexOf("/api/")) : API_URL;
+console.log("[API] URL utilisée :", API_URL);
 
-const COOKIE_KEY = "congolibs_cookies";
-const CSRF_KEY = "congolibs_csrf";
+const TOKEN_KEY = "congolibs_auth_token";
+let authToken = "";
 
-let cookieStore = "";
-let csrfToken = "";
-
-const loadSession = async () => {
-  try {
-    const [c, t] = await Promise.all([
-      AsyncStorage.getItem(COOKIE_KEY),
-      AsyncStorage.getItem(CSRF_KEY),
-    ]);
-    if (c) cookieStore = c;
-    if (t) csrfToken = t;
-  } catch (e) {}
-};
-
-const persistSession = async () => {
-  try {
-    await Promise.all([
-      AsyncStorage.setItem(COOKIE_KEY, cookieStore),
-      AsyncStorage.setItem(CSRF_KEY, csrfToken),
-    ]);
-  } catch (e) {}
+const storage = {
+  setItem: async (key, value) => {
+    if (Platform.OS === "web") {
+      await AsyncStorage.setItem(key, value);
+      return;
+    }
+    await SecureStore.setItemAsync(key, value);
+  },
+  getItem: async (key) => {
+    if (Platform.OS === "web") return AsyncStorage.getItem(key);
+    return SecureStore.getItemAsync(key);
+  },
+  removeItem: async (key) => {
+    if (Platform.OS === "web") {
+      await AsyncStorage.removeItem(key);
+      return;
+    }
+    await SecureStore.deleteItemAsync(key);
+  },
 };
 
 export const clearSession = async () => {
-  cookieStore = "";
-  csrfToken = "";
+  authToken = "";
   try {
-    await AsyncStorage.multiRemove([COOKIE_KEY, CSRF_KEY]);
+    await storage.removeItem(TOKEN_KEY);
   } catch (e) {}
 };
 
-const persistCookies = (headers) => {
-  const setCookie = headers?.["set-cookie"];
-  if (setCookie) {
-    const lines = Array.isArray(setCookie) ? setCookie : setCookie.split("\n");
-    const pairs = lines
-      .map((line) => (line || "").split(";")[0].trim())
-      .filter((pair) => pair.includes("="));
-    if (pairs.length) cookieStore = pairs.join("; ");
+export const loadToken = async () => {
+  if (authToken) return authToken;
+  try {
+    authToken = (await storage.getItem(TOKEN_KEY)) || "";
+  } catch (e) {
+    authToken = "";
   }
-  const csrfMatch = cookieStore.match(/csrftoken=([^;]+)/);
-  if (csrfMatch) csrfToken = csrfMatch[1];
-  if (cookieStore || csrfToken) persistSession();
+  return authToken;
 };
 
-export const setCsrfToken = (token) => {
-  if (token) csrfToken = token;
-  persistSession();
-};
-
-export const primeCsrfToken = async () => {
-  if (csrfToken) return true;
+const saveToken = async (token) => {
   try {
-    await client.get("/users/session/");
+    if (token) {
+      authToken = token;
+      await storage.setItem(TOKEN_KEY, token);
+    } else {
+      await clearSession();
+    }
   } catch (e) {}
-  return !!csrfToken;
 };
 
 const client = axios.create({
   baseURL: API_URL,
-  withCredentials: true,
-  headers: { "Content-Type": "application/json" },
+  timeout: 20000,
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
 });
 
-client.interceptors.request.use((config) => {
-  if (cookieStore) config.headers.Cookie = cookieStore;
-  if (csrfToken) config.headers["X-CSRFToken"] = csrfToken;
-  config.headers.Referer = `${API_ORIGIN}/`;
-  config.headers.Origin = API_ORIGIN;
+client.interceptors.request.use(async (config) => {
+  if (!authToken) await loadToken();
+  if (authToken) config.headers.Authorization = `Token ${authToken}`;
   return config;
 });
 
 client.interceptors.response.use(
-  (response) => {
-    persistCookies(response.headers);
-    if (response.data?.csrfToken) setCsrfToken(response.data.csrfToken);
-    return response;
-  },
-  (error) => {
-    persistCookies(error.response?.headers);
+  (res) => res,
+  async (error) => {
+    if (error.response?.status === 401) await clearSession();
     return Promise.reject(error);
   }
 );
@@ -99,7 +92,7 @@ const toErrorMessage = (error) => {
     if (typeof data.detail === "string") return data.detail;
     if (Array.isArray(data.detail)) return data.detail.join(" ");
     if (typeof data === "object") {
-      const values = Object.values(data).filter((v) => v);
+      const values = Object.values(data).filter(Boolean);
       if (values.length) return values.flat().map(String).join(" ");
     }
   }
@@ -109,11 +102,18 @@ const toErrorMessage = (error) => {
   return "Une erreur est survenue. Veuillez réessayer.";
 };
 
+const logError = (tag, error) => {
+  console.log(
+    `[${tag}] status: ${error.response?.status} | data: ${JSON.stringify(error.response?.data)}`
+  );
+};
+
 export const getCall = async (endpoint, params) => {
   try {
     const res = await client.get(endpoint, { params });
     return res.data;
   } catch (e) {
+    logError(`GET ${endpoint}`, e);
     throw new Error(toErrorMessage(e));
   }
 };
@@ -123,23 +123,97 @@ export const postCall = async (endpoint, data) => {
     const res = await client.post(endpoint, data);
     return res.data;
   } catch (e) {
+    logError(`POST ${endpoint}`, e);
     throw new Error(toErrorMessage(e));
   }
 };
 
-export const isSessionValid = async () => {
-  await loadSession();
+export const putCall = async (endpoint, data) => {
   try {
-    await client.get("/users/session/");
+    const res = await client.put(endpoint, data);
+    return res.data;
+  } catch (e) {
+    logError(`PUT ${endpoint}`, e);
+    throw new Error(toErrorMessage(e));
+  }
+};
+
+export const patchCall = async (endpoint, data) => {
+  try {
+    const res = await client.patch(endpoint, data);
+    return res.data;
+  } catch (e) {
+    logError(`PATCH ${endpoint}`, e);
+    throw new Error(toErrorMessage(e));
+  }
+};
+
+export const deleteCall = async (endpoint) => {
+  try {
+    const res = await client.delete(endpoint);
+    return res.data;
+  } catch (e) {
+    logError(`DELETE ${endpoint}`, e);
+    throw new Error(toErrorMessage(e));
+  }
+};
+
+const persistTokenFrom = async (data) => {
+  const token = data?.key ?? data?.token;
+  if (token) {
+    await saveToken(token);
+  }
+  return data;
+};
+
+export const login = async (username, password) => {
+  try {
+    const res = await client.post("/users/auth/login-mobile/", {
+      username,
+      password,
+    });
+    return await persistTokenFrom(res.data);
+  } catch (e) {
+    logError("LOGIN MOBILE", e);
+    throw new Error(toErrorMessage(e));
+  }
+};
+
+export const register = async ({ username, email, password1, password2 }) => {
+  try {
+    const res = await client.post("/users/auth/register-mobile/", {
+      username,
+      email,
+      password1,
+      password2,
+    });
+    return await persistTokenFrom(res.data);
+  } catch (e) {
+    logError("REGISTER MOBILE", e);
+    throw new Error(toErrorMessage(e));
+  }
+};
+
+export const getCurrentUser = async () => {
+  const data = await getCall("/users/auth/user/");
+  return data?.user ?? data;
+};
+
+export const isSessionValid = async () => {
+  const token = await loadToken();
+  if (!token) return false;
+  try {
+    await client.get("/users/auth/user/");
     return true;
   } catch (e) {
+    await clearSession();
     return false;
   }
 };
 
 export const logout = async () => {
   try {
-    await client.post("/users/logout/");
+    await client.post("/users/auth/logout-mobile/");
   } catch (e) {}
   await clearSession();
 };
