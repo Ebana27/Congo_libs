@@ -28,7 +28,12 @@ from .serializers import (
 def get_google_drive_service():
     credentials_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
     if not credentials_json:
-        raise ValueError("GOOGLE_SERVICE_ACCOUNT_JSON is not configured")
+        credentials_file = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "")
+        if credentials_file:
+            with open(credentials_file, "r", encoding="utf-8") as fh:
+                credentials_json = fh.read()
+        if not credentials_json:
+            raise ValueError("GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_SERVICE_ACCOUNT_FILE is not configured")
     info = json.loads(credentials_json)
     credentials = service_account.Credentials.from_service_account_info(
         info,

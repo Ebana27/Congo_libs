@@ -61,6 +61,12 @@ CORS_ALLOW_HEADERS = [
 ]
 CORS_EXPOSE_HEADERS = ["Content-Type", "X-CSRFToken"]
 
+# Google Drive service-account credentials loaded from environment.
+# Keep the raw JSON string in GOOGLE_SERVICE_ACCOUNT_JSON or point to a file
+# with GOOGLE_SERVICE_ACCOUNT_FILE when the service account is mounted locally.
+GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+GOOGLE_SERVICE_ACCOUNT_FILE = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "")
+GOOGLE_DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
 
 # Application definition
 
@@ -236,12 +242,19 @@ CSRF_COOKIE_SAMESITE = "Lax"
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "noreply@example.com")
-MAILERS = {
-    'default': {
-        'BACKEND': os.environ.get(
-            "MAILER_BACKEND",
-            "django.core.mail.backends.smtp.EmailBackend",
-        ),
-    },
-}
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.smtp.EmailBackend",
+)
+
+# Brevo-friendly environment aliases.
+EMAIL_HOST = os.environ.get(
+    "BREVO_SMTP_HOST",
+    os.environ.get("EMAIL_HOST", "mail.congolibs.space"),
+)
+EMAIL_PORT = int(os.environ.get("BREVO_SMTP_PORT"))
+EMAIL_USE_TLS = os.environ.get("BREVO_SMTP_USE_TLS").lower() == "true"
+EMAIL_HOST_USER = os.environ.get( "BREVO_SMTP_LOGIN")
+EMAIL_HOST_PASSWORD = os.environ.get("BREVO_SMTP_KEY")
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "BREVO_DEFAULT_FROM_EMAIL")

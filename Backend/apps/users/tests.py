@@ -1,7 +1,11 @@
 import json
+import os
 from unittest.mock import patch
 
 from allauth.socialaccount.models import SocialAccount
+from django.conf import settings
+from django.core.mail import get_connection, send_mail
+from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -56,6 +60,35 @@ class GoogleAuthTests(APITestCase):
             SocialAccount.objects.filter(user=existing_user, provider="google", uid="existing@example.com").exists()
         )
         self.assertEqual(response.data["user"]["email"], "existing@example.com")
+
+
+class BrevoSmtpEmailDeliveryTests(SimpleTestCase):
+    @override_settings(
+        EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+        EMAIL_HOST=os.environ.get("EMAIL_HOST", "mail.congolibs.space"),
+        EMAIL_PORT=int(os.environ.get("EMAIL_PORT", "587")),
+        EMAIL_USE_TLS=os.environ.get("EMAIL_USE_TLS", "True").lower() == "true",
+        EMAIL_HOST_USER=os.environ.get("EMAIL_HOST_USER", "hello@congolibs.space"),
+        EMAIL_HOST_PASSWORD=os.environ.get("EMAIL_HOST_PASSWORD", ""),
+        DEFAULT_FROM_EMAIL=os.environ.get("DEFAULT_FROM_EMAIL", "hello@congolibs.space"),
+    )
+    def test_send_mail_uses_brevo_smtp_backend(self):
+        backend = get_connection()
+        self.assertEqual(backend.host, "mail.congolibs.space")
+        self.assertEqual(backend.port, 587)
+        self.assertTrue(backend.use_tls)
+
+        with patch("django.core.mail.backends.smtp.EmailBackend.send_messages", return_value=1) as mocked:
+            sent = send_mail(
+                "Brevo SMTP test",
+                "Hello from Brevo SMTP integration test",
+                settings.DEFAULT_FROM_EMAIL,
+                ["recipient@example.com"],
+                fail_silently=False,
+            )
+
+        self.assertEqual(sent, 1)
+        mocked.assert_called_once()
 
 
 class MobileAuthTests(APITestCase):
