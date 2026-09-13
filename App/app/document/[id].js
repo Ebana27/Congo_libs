@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import {
   ArrowLeft,
   BookOpen,
@@ -20,7 +21,7 @@ import {
   UserRound,
 } from 'lucide-react-native';
 import { colors, typography, fonts } from '../../src/constants/themes';
-import { getCall, postCall } from '../../src/services/api/congolibsAPI';
+import { getCall, downloadDocument } from '../../src/services/api/congolibsAPI';
 import ErrorModal from '../../src/components/shared/ErrorModal';
 import SuccessModal from '../../src/components/shared/SuccessModal';
 
@@ -60,8 +61,16 @@ export default function DocumentDetailScreen() {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      await postCall(`/documents/${encodeURIComponent(id)}/telecharger/`);
-      setSuccessMessage('Le document a été ajouté à vos téléchargements.');
+      const uri = await downloadDocument(id, name);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: name,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        setSuccessMessage('Le document a été téléchargé dans vos fichiers.');
+      }
     } catch (e) {
       setErrorMessage(e.message || 'Impossible de télécharger ce document pour le moment.');
     } finally {
@@ -85,7 +94,7 @@ export default function DocumentDetailScreen() {
         <View style={styles.backButton} />
       </View>
 
-      {loading ? (
+      {loading && !doc && !fallbackName ? (
         <ActivityIndicator
           color={colors.primaryDark}
           size="large"

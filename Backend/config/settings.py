@@ -20,7 +20,7 @@ DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 ALLOWED_HOSTS = os.environ.get(
     "ALLOWED_HOSTS",
-    "localhost,127.0.0.1,0.0.0.0,[::1],backend",
+    "192.168.234.82,localhost,127.0.0.1,0.0.0.0,[::1],backend",
 ).split(",")
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS if host.strip()]
 

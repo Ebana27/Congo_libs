@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StatusBar,
@@ -20,7 +19,11 @@ import {
   Pencil,
 } from 'lucide-react-native';
 import { colors, typography, fonts } from '../../src/constants/themes';
-import { getCurrentUser, logout as apiLogout } from '../../src/services/api/congolibsAPI';
+import {
+  getCurrentUser,
+  loadToken,
+  logout as apiLogout,
+} from '../../src/services/api/congolibsAPI';
 import ConfirmModal from '../../src/components/profil/ConfirmModal';
 
 function MenuItem({ icon: Icon, label, onPress, danger = false, last = false }) {
@@ -49,22 +52,39 @@ function MenuItem({ icon: Icon, label, onPress, danger = false, last = false }) 
 export default function ProfilScreen() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [loggingOut, setLoggingOut] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
 
   useEffect(() => {
-    getCurrentUser()
-      .then((data) => setUser(data))
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
+    let mounted = true;
+    const init = async () => {
+      const token = await loadToken().catch(() => '');
+      if (!mounted) return;
+      if (!token) {
+        setLoggedIn(false);
+        setLoading(false);
+        return;
+      }
+      setLoggedIn(true);
+      getCurrentUser()
+        .then((data) => mounted && setUser(data))
+        .catch(async () => {
+          const still = await loadToken().catch(() => '');
+          if (mounted && !still) setLoggedIn(false);
+        })
+        .finally(() => mounted && setLoading(false));
+    };
+    init();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Déclenché uniquement après confirmation dans la modale
-  const handleLogout = async () => {
+  const handleLogout = () => {
     setConfirmVisible(false);
-    setLoggingOut(true);
-    await apiLogout();
     router.replace('/auth/login');
+    apiLogout().catch(() => {});
   };
 
   const getInitials = () => {
@@ -81,16 +101,7 @@ export default function ProfilScreen() {
       'Utilisateur'
     : 'Utilisateur';
 
-  if (loading) {
-    return (
-      <View style={styles.loaderContainer}>
-        <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
-        <ActivityIndicator color={colors.primaryDark} size="large" />
-      </View>
-    );
-  }
-
-  if (!user) {
+  if (!loading && !loggedIn) {
     return (
       <ScrollView
         style={styles.container}
@@ -207,12 +218,9 @@ export default function ProfilScreen() {
       <Pressable
         style={({ pressed }) => [styles.logoutButton, pressed && styles.pressed]}
         onPress={() => setConfirmVisible(true)}
-        disabled={loggingOut}
       >
         <LogOut size={20} color={colors.danger} />
-        <Text style={styles.logoutText}>
-          {loggingOut ? 'Déconnexion...' : 'Se déconnecter'}
-        </Text>
+        <Text style={styles.logoutText}>Se déconnecter</Text>
       </Pressable>
 
       <Text style={styles.version}>Congolibs v1.0.0</Text>
@@ -235,12 +243,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.surface, // ← page blanche
-  },
-  loaderContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
   },
   content: {
     padding: 16,

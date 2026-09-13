@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { File, Paths } from "expo-file-system";
 
 const API_URL = (
   process.env.EXPO_PUBLIC_API_URL ||
@@ -216,4 +217,53 @@ export const logout = async () => {
     await client.post("/users/auth/logout-mobile/");
   } catch (e) {}
   await clearSession();
+};
+
+export const getDocuments = async (params) => {
+  const data = await getCall("/documents/", params);
+  return Array.isArray(data) ? data : data?.results ?? [];
+};
+
+export const downloadDocument = async (id, nom) => {
+  const token = await loadToken();
+  const headers = {};
+  if (token) headers.Authorization = `Token ${token}`;
+
+  const controller =
+    typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeout = setTimeout(() => controller?.abort(), 30000);
+
+  let res;
+  try {
+    res = await fetch(
+      `${API_URL}/documents/${encodeURIComponent(id)}/telecharger/`,
+      { method: "POST", headers, signal: controller?.signal }
+    );
+  } catch (e) {
+    throw new Error(
+      "Impossible de télécharger ce document pour le moment. Vérifiez votre connexion Internet et réessayez."
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  const contentType = res.headers.get("content-type") || "";
+  if (!res.ok || contentType.includes("application/json")) {
+    const data = contentType.includes("application/json")
+      ? await res.json()
+      : await res.text();
+    const detail =
+      typeof data === "string"
+        ? data
+        : data?.detail || data?.[0] || `Erreur HTTP ${res.status}`;
+    throw new Error(typeof detail === "string" ? detail : "Téléchargement impossible.");
+  }
+
+  const buffer = await res.arrayBuffer();
+  const safeName =
+    (nom ? String(nom).replace(/[\\/:*?"<>|]+/g, "-").slice(0, 60) : id) || id;
+  const file = new File(Paths.document, `${safeName}.pdf`);
+  if (!file.exists) file.create();
+  file.write(new Uint8Array(buffer));
+  return file.uri;
 };
