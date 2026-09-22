@@ -42,6 +42,7 @@ export default function RootLayout() {
         <Stack.Screen name="auth/signup" />
         <Stack.Screen name="auth/resetpwd" />
         <Stack.Screen name="document/[id]" />
+        <Stack.Screen name="reader" />
         <Stack.Screen name="(tabs)" />
       </Stack>
     </SafeAreaProvider>

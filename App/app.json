@@ -8,11 +8,6 @@
     "scheme": "congolibs",
     "primaryColor": "#ECFCCB",
     "icon": "./assets/icons/icon.png",
-    "splash": {
-      "image": "./assets/splash/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ECFCCB"
-    },
     "ios": {
       "supportsTablet": true
     },
@@ -22,12 +17,6 @@
         "foregroundImage": "./assets/icons/android-icon-foreground.png",
         "backgroundImage": "./assets/icons/android-icon-background.png",
         "monochromeImage": "./assets/icons/android-icon-monochrome.png"
-      },
-      "edgeToEdgeEnabled": true,
-      "statusBar": {
-        "backgroundColor": "transparent",
-        "barStyle": "dark-content",
-        "translucent": true
       },
       "package": "com.anonymous.congolibs"
     },
@@ -48,6 +37,12 @@
       ],
       "expo-secure-store",
       "expo-sharing"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "133a5ac9-846a-4de0-a7f5-30132b757ea2"
+      }
+    }
   }
 }

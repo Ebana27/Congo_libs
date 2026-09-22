@@ -78,6 +78,19 @@ export default function DocumentDetailScreen() {
     }
   };
 
+  const handleRead = () => {
+    const driveId = doc?.lien_telechargement;
+    if (driveId) {
+      router.push({ pathname: '/reader', params: { driveId, title: name } });
+      return;
+    }
+    // TEMPORAIRE — le lecteur WebView ne rend pas les PDF sur Android.
+    // TODO : dès que le backend expose lien_telechargement (ID Google Drive)
+    // côté utilisateur connecté, la lecture utilisera la preview Drive.
+    // En attendant, on ouvre l'aperçu HTML de démonstration.
+    router.push({ pathname: '/reader', params: { html: '1', title: name } });
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
@@ -140,6 +153,14 @@ export default function DocumentDetailScreen() {
               </View>
             </View>
           </View>
+
+          <Pressable
+            style={({ pressed }) => [styles.readButton, pressed && styles.pressed]}
+            onPress={handleRead}
+          >
+            <BookOpen size={20} color={colors.surface} />
+            <Text style={styles.readText}>Lire le document</Text>
+          </Pressable>
 
           <Pressable
             style={({ pressed }) => [
@@ -305,6 +326,21 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 15,
     marginTop: 20,
+  },
+  readButton: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: colors.primaryDark,
+    borderRadius: 16,
+    paddingVertical: 16,
+    marginTop: 20,
+  },
+  readText: {
+    ...typography.button,
+    fontSize: 16,
   },
   favoriteButtonOn: {
     backgroundColor: colors.primaryDark,

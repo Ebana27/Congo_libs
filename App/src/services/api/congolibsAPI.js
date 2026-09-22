@@ -252,10 +252,24 @@ export const downloadDocument = async (id, nom) => {
     const data = contentType.includes("application/json")
       ? await res.json()
       : await res.text();
-    const detail =
+    let detail =
       typeof data === "string"
         ? data
         : data?.detail || data?.[0] || `Erreur HTTP ${res.status}`;
+
+    // On masque les détails techniques/backends (clés Google, stack…) à l'utilisateur.
+    if (res.status === 401) {
+      detail = "Vous devez être connecté pour télécharger ce document.";
+    } else if (
+      typeof detail === "string" &&
+      (/service account|client_email|token_uri|googleapis|GOOGLE_/i.test(detail) ||
+        /authentication|credentials/i.test(detail))
+    ) {
+      detail =
+        res.status === 401
+          ? "Vous devez être connecté pour télécharger ce document."
+          : "Ce document n'est pas encore disponible au téléchargement. Réessayez plus tard.";
+    }
     throw new Error(typeof detail === "string" ? detail : "Téléchargement impossible.");
   }
 

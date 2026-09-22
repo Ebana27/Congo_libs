@@ -1,9 +1,10 @@
-import { memo } from 'react';
-import { Tabs } from 'expo-router';
+import { memo, useEffect, useState } from 'react';
+import { Tabs, router } from 'expo-router';
 import { BookOpen, Compass, Home, Plus, User, PlusCircle } from 'lucide-react-native';
 import Header from '../../src/components/shared/Header';
 import { colors } from '../../src/constants/themes';
 import { Pressable } from 'react-native';
+import { loadToken } from '../../src/services/api/congolibsAPI';
 
 const TITLES = {
   index: 'CONGOLIBS',
@@ -19,6 +20,28 @@ const CompassIcon = memo(({ color, size }) => <Compass color={color} size={size}
 const UserIcon = memo(({ color, size }) => <User color={color} size={size} />);
 
 export default function TabsLayout() {
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    loadToken().then((token) => {
+      if (!mounted) return;
+      if (!token) {
+        // Sécurité : on ne laisse pas naviguer dans l'app sans session valide.
+        router.replace('/auth/login');
+        return;
+      }
+      setChecked(true);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (!checked) {
+    return null;
+  }
+
   return (
     <Tabs
       screenOptions={{

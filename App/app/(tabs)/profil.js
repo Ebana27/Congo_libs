@@ -147,7 +147,7 @@ export default function ProfilScreen() {
         <Text style={styles.name} numberOfLines={1}>
           {fullName}
         </Text>
-        {user.email ? (
+        {user?.email ? (
           <Text style={styles.email} numberOfLines={1}>
             {user.email}
           </Text>

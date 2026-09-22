@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, Text, StatusBar, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, StatusBar, View } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography } from '../../src/constants/themes';
@@ -15,22 +15,32 @@ const hasSeenOnboarding = async () => {
   }
 };
 
+const MIN_SPLASH_MS = 3000;
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export default function OnboardingScreen() {
   useEffect(() => {
     let mounted = true;
 
     const route = async () => {
-      try {
-        const token = await loadToken();
-        if (token) {
-          router.replace('/(tabs)');
-          return;
-        }
-      } catch (e) {}
+      const destination = await (async () => {
+        try {
+          const token = await loadToken();
+          if (token) return 'tabs';
+        } catch (e) {}
+        const seen = await hasSeenOnboarding();
+        return seen ? 'login' : 'intro';
+      })();
+
+      await wait(MIN_SPLASH_MS);
       if (!mounted) return;
-      const seen = await hasSeenOnboarding();
-      if (!mounted) return;
-      router.replace(seen ? '/auth/login' : '/onboarding/intro');
+
+      if (destination === 'tabs') {
+        router.replace('/(tabs)');
+        return;
+      }
+      router.replace(destination === 'login' ? '/auth/login' : '/onboarding/intro');
     };
 
     route();
@@ -43,6 +53,7 @@ export default function OnboardingScreen() {
     <View style={styles.container}>
       <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
       <Text style={styles.logo}>Congolibs</Text>
+      <ActivityIndicator color={colors.primaryDark} size="large" style={styles.loader} />
     </View>
   );
 }
@@ -58,5 +69,8 @@ const styles = StyleSheet.create({
   logo: {
     ...typography.title,
     fontSize: 36,
+  },
+  loader: {
+    marginTop: 20,
   },
 });
