@@ -12,37 +12,15 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import { ArrowLeft } from 'lucide-react-native';
 import { colors, typography } from '../src/constants/themes';
+import { logError, logStep } from '../src/utils/logger';
 
-// TEMPORAIRE — lecteur WebView en attendant un lecteur PDF natif
-// (expo-pdf / react-native-pdf). À remplacer côté natif, notamment pour
-// le rendu des PDF locaux sur Android (la WebView Android ne rend pas les PDF).
+// Lecteur WebView : uniquement utilisé quand une vraie source est disponible
+// (aperçu Drive exposé par l'API). Sans source, aucun contenu n'est simulé — le
+// bouton « Lire » de la fiche télécharge le PDF et l'ouvre avec le lecteur du
+// système, la WebView Android ne rendant pas les PDF.
 
 const asString = (value) =>
   Array.isArray(value) ? value[0] : value || '';
-
-const PLACEHOLDER_HTML = `<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<style>
-  body { margin: 0; font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; background: #edf8f1; color: #060a0d; }
-  .wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; }
-  .badge { width: 96px; height: 96px; border-radius: 50%; background: #088a49; color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 30px; letter-spacing: 1px; margin-bottom: 24px; }
-  h1 { font-size: 26px; margin: 0 0 8px; }
-  p { font-size: 16px; line-height: 24px; color: #074a2b; margin: 0 0 4px; }
-  .note { font-size: 13px; color: #5a7a6a; margin-top: 24px; max-width: 300px; }
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="badge">CL</div>
-    <h1>Hello les gars</h1>
-    <p>Ceci est l'\u00e9cran de d\u00e9monstration du lecteur.</p>
-    <p class="note">Le lecteur affichera ici les vrais documents dès que le backend fournira leur lien de lecture.</p>
-  </div>
-</body>
-</html>`;
 
 export default function ReaderScreen() {
   const params = useLocalSearchParams();
@@ -50,7 +28,6 @@ export default function ReaderScreen() {
   const driveId = asString(params.driveId);
   const url = asString(params.url);
   const file = asString(params.file);
-  const isPlaceholder = asString(params.html) === '1';
 
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -59,9 +36,12 @@ export default function ReaderScreen() {
     ? `https://drive.google.com/file/d/${driveId}/preview`
     : url || file;
 
-  const source = isPlaceholder
-    ? { html: PLACEHOLDER_HTML }
-    : { uri: uri || 'about:blank' };
+  const hasSource = Boolean(uri);
+
+  logStep('lecteur ouvert', {
+    titre: title || '(sans titre)',
+    source: hasSource ? uri : 'AUCUNE — le backend n’expose pas le lien du fichier',
+  });
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -80,21 +60,35 @@ export default function ReaderScreen() {
         <View style={styles.backButton} />
       </View>
 
-      {failed ? (
+      {!hasSource || failed ? (
         <View style={styles.errorBox}>
-          <Text style={styles.errorTitle}>Impossible d'ouvrir le document</Text>
-          <Text style={styles.errorText}>
-            Vérifiez votre connexion Internet puis réessayez.
+          <Text style={styles.errorTitle}>
+            {failed ? "Impossible d'ouvrir le document" : 'Contenu indisponible'}
           </Text>
-          <Pressable
-            style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
-            onPress={() => {
-              setFailed(false);
-              setLoading(true);
-            }}
-          >
-            <Text style={styles.retryText}>Réessayer</Text>
-          </Pressable>
+          <Text style={styles.errorText}>
+            {failed
+              ? 'Vérifiez votre connexion Internet puis réessayez.'
+              : "La lecture dans l'application n'est pas encore disponible pour ce document. Utilisez le bouton « Télécharger » de la fiche pour l'ouvrir."}
+          </Text>
+          {!failed && (
+            <Pressable
+              style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
+              onPress={() => router.back()}
+            >
+              <Text style={styles.retryText}>Retour à la fiche</Text>
+            </Pressable>
+          )}
+          {failed && (
+            <Pressable
+              style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
+              onPress={() => {
+                setFailed(false);
+                setLoading(true);
+              }}
+            >
+              <Text style={styles.retryText}>Réessayer</Text>
+            </Pressable>
+          )}
         </View>
       ) : (
         <View style={styles.webContainer}>
@@ -104,20 +98,25 @@ export default function ReaderScreen() {
             </View>
           )}
           <WebView
-            source={source}
+            source={{ uri }}
             javaScriptEnabled
             domStorageEnabled
             startInLoadingState
             allowsInlineMediaPlayback
             allowingReadAccessToURL={file || undefined}
-            onLoadEnd={() => setLoading(false)}
-            onError={() => {
+            onLoadEnd={() => {
               setLoading(false);
-              setFailed(true);
+              logStep('WebView chargée');
             }}
-            onHttpError={() => {
+            onError={(e) => {
               setLoading(false);
               setFailed(true);
+              logError('LECTURE', 'WebView en erreur', e?.nativeEvent?.description || e);
+            }}
+            onHttpError={(e) => {
+              setLoading(false);
+              setFailed(true);
+              logError('LECTURE', `WebView HTTP ${e?.nativeEvent?.statusCode}`, e?.nativeEvent?.url);
             }}
             style={styles.web}
           />

@@ -3,6 +3,7 @@ import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { File, Paths } from "expo-file-system";
+import { logError, logStep, logWarn, logResponse } from "../../utils/logger";
 
 const API_URL = (
   process.env.EXPO_PUBLIC_API_URL ||
@@ -12,6 +13,7 @@ const API_URL = (
 console.log("[API] URL utilisée :", API_URL);
 
 const TOKEN_KEY = "congolibs_auth_token";
+const USER_KEY = "congolibs_user_cache";
 let authToken = "";
 
 const storage = {
@@ -40,6 +42,27 @@ export const clearSession = async () => {
   try {
     await storage.removeItem(TOKEN_KEY);
   } catch (e) {}
+  try {
+    await AsyncStorage.removeItem(USER_KEY);
+  } catch (e) {}
+};
+
+export const cacheUser = async (user) => {
+  if (!user) return null;
+  try {
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch (e) {}
+  return user;
+};
+
+export const getCachedUser = async () => {
+  try {
+    const raw = await AsyncStorage.getItem(USER_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
 };
 
 export const loadToken = async () => {
@@ -75,13 +98,24 @@ const client = axios.create({
 client.interceptors.request.use(async (config) => {
   if (!authToken) await loadToken();
   if (authToken) config.headers.Authorization = `Token ${authToken}`;
+  if (String(config.url || '').includes("telecharger")) {
+    logStep("intercepteur: en-tête Authorization", authToken ? "Token présent" : "AUCUN jeton");
+  }
   return config;
 });
 
 client.interceptors.response.use(
   (res) => res,
   async (error) => {
-    if (error.response?.status === 401) await clearSession();
+    if (error.response?.status === 401) {
+      logWarn(
+        "API",
+        `401 sur ${error.config?.url} — la session est invalidée. ` +
+          "Si l'URL est /users/auth/login-mobile/ : cet endpoint n'existe pas côté backend, " +
+          "donc aucun jeton n'est jamais obtenu et Authorization n'est jamais envoyé."
+      );
+      await clearSession();
+    }
     return Promise.reject(error);
   }
 );
@@ -103,9 +137,11 @@ const toErrorMessage = (error) => {
   return "Une erreur est survenue. Veuillez réessayer.";
 };
 
-const logError = (tag, error) => {
-  console.log(
-    `[${tag}] status: ${error.response?.status} | data: ${JSON.stringify(error.response?.data)}`
+const logApiError = (tag, error) => {
+  logError(
+    tag,
+    `status ${error.response?.status ?? "réseau"}`,
+    JSON.stringify(error.response?.data)?.slice(0, 300)
   );
 };
 
@@ -114,7 +150,7 @@ export const getCall = async (endpoint, params) => {
     const res = await client.get(endpoint, { params });
     return res.data;
   } catch (e) {
-    logError(`GET ${endpoint}`, e);
+    logApiError(`GET ${endpoint}`, e);
     throw new Error(toErrorMessage(e));
   }
 };
@@ -124,7 +160,7 @@ export const postCall = async (endpoint, data) => {
     const res = await client.post(endpoint, data);
     return res.data;
   } catch (e) {
-    logError(`POST ${endpoint}`, e);
+    logApiError(`POST ${endpoint}`, e);
     throw new Error(toErrorMessage(e));
   }
 };
@@ -134,7 +170,7 @@ export const putCall = async (endpoint, data) => {
     const res = await client.put(endpoint, data);
     return res.data;
   } catch (e) {
-    logError(`PUT ${endpoint}`, e);
+    logApiError(`PUT ${endpoint}`, e);
     throw new Error(toErrorMessage(e));
   }
 };
@@ -144,7 +180,7 @@ export const patchCall = async (endpoint, data) => {
     const res = await client.patch(endpoint, data);
     return res.data;
   } catch (e) {
-    logError(`PATCH ${endpoint}`, e);
+    logApiError(`PATCH ${endpoint}`, e);
     throw new Error(toErrorMessage(e));
   }
 };
@@ -154,7 +190,7 @@ export const deleteCall = async (endpoint) => {
     const res = await client.delete(endpoint);
     return res.data;
   } catch (e) {
-    logError(`DELETE ${endpoint}`, e);
+    logApiError(`DELETE ${endpoint}`, e);
     throw new Error(toErrorMessage(e));
   }
 };
@@ -175,7 +211,7 @@ export const login = async (username, password) => {
     });
     return await persistTokenFrom(res.data);
   } catch (e) {
-    logError("LOGIN MOBILE", e);
+    logApiError("LOGIN MOBILE", e);
     throw new Error(toErrorMessage(e));
   }
 };
@@ -190,14 +226,15 @@ export const register = async ({ username, email, password1, password2 }) => {
     });
     return await persistTokenFrom(res.data);
   } catch (e) {
-    logError("REGISTER MOBILE", e);
+    logApiError("REGISTER MOBILE", e);
     throw new Error(toErrorMessage(e));
   }
 };
 
 export const getCurrentUser = async () => {
   const data = await getCall("/users/auth/user/");
-  return data?.user ?? data;
+  const user = data?.user ?? data;
+  return cacheUser(user);
 };
 
 export const isSessionValid = async () => {
@@ -229,9 +266,20 @@ export const downloadDocument = async (id, nom) => {
   const headers = {};
   if (token) headers.Authorization = `Token ${token}`;
 
+  logStep('ouverture document', {
+    id,
+    nom,
+    url: `${API_URL}/documents/${encodeURIComponent(id)}/telecharger/`,
+    jeton: token ? `présent (${token.length} car.)` : 'ABSENT',
+  });
+
   const controller =
     typeof AbortController !== "undefined" ? new AbortController() : null;
-  const timeout = setTimeout(() => controller?.abort(), 30000);
+  const timeout = setTimeout(() => {
+    logWarn('LECTURE', 'délai de 30 s dépassé, requête abandonnée');
+    controller?.abort();
+  }, 30000);
+  const startedAt = Date.now();
 
   let res;
   try {
@@ -240,12 +288,16 @@ export const downloadDocument = async (id, nom) => {
       { method: "POST", headers, signal: controller?.signal }
     );
   } catch (e) {
+    logError('LECTURE', `requête impossible (${e.name})`, e.message);
     throw new Error(
       "Impossible de télécharger ce document pour le moment. Vérifiez votre connexion Internet et réessayez."
     );
   } finally {
     clearTimeout(timeout);
   }
+
+  logResponse('LECTURE', res);
+  logStep('réponse reçue en', `${Date.now() - startedAt} ms`);
 
   const contentType = res.headers.get("content-type") || "";
   if (!res.ok || contentType.includes("application/json")) {
@@ -256,6 +308,28 @@ export const downloadDocument = async (id, nom) => {
       typeof data === "string"
         ? data
         : data?.detail || data?.[0] || `Erreur HTTP ${res.status}`;
+
+    logStep('échec API', {
+      http: res.status,
+      cle: typeof data === "object" && data ? Object.keys(data).join(",") : "texte",
+      detail: String(detail).slice(0, 400),
+    });
+
+    if (res.status === 401) {
+      logWarn(
+        'LECTURE',
+        '401 — le backend refuse la requête. Cause probable : aucun header Token envoyé, ou TokenAuth absent côté API (SessionAuthentication seulement).'
+      );
+    } else if (res.status === 403) {
+      logWarn('LECTURE', '403 — accès refusé, ou CSRF manquant sur une authentification par cookie.');
+    } else if (res.status === 404) {
+      logWarn('LECTURE', '404 — id inconnu ou ce n’est pas un UUID valide (l’URL attend un uuid).');
+    } else if (res.status === 502) {
+      logWarn(
+        'LECTURE',
+        '502 — le backend a reach Google Drive et a échoué : variable GOOGLE_SERVICE_ACCOUNT_JSON absente/incorrecte, ou lien_telechargement qui n’est pas un ID Drive, ou fichier non partagé avec le compte de service.'
+      );
+    }
 
     // On masque les détails techniques/backends (clés Google, stack…) à l'utilisateur.
     if (res.status === 401) {
@@ -274,10 +348,16 @@ export const downloadDocument = async (id, nom) => {
   }
 
   const buffer = await res.arrayBuffer();
+  logStep('PDF reçu', `${Math.round(buffer.byteLength / 1024)} Ko`);
+  if (buffer.byteLength < 1000) {
+    logWarn('LECTURE', 'fichier suspect : moins de 1 Ko, le PDF est probablement vide ou tronqué.');
+  }
+
   const safeName =
     (nom ? String(nom).replace(/[\\/:*?"<>|]+/g, "-").slice(0, 60) : id) || id;
   const file = new File(Paths.document, `${safeName}.pdf`);
   if (!file.exists) file.create();
   file.write(new Uint8Array(buffer));
+  logStep('fichier enregistré', file.uri);
   return file.uri;
 };

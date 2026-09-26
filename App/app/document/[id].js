@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  ImageBackground,
   Pressable,
   ScrollView,
+  Share,
   StatusBar,
   StyleSheet,
   Text,
@@ -11,17 +13,21 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   ArrowLeft,
   BookOpen,
   CalendarDays,
   Download,
   Heart,
+  Share2,
+  Star,
   Tag,
-  UserRound,
 } from 'lucide-react-native';
 import { colors, typography, fonts } from '../../src/constants/themes';
 import { getCall, downloadDocument } from '../../src/services/api/congolibsAPI';
+import { logError, logStep } from '../../src/utils/logger';
 import ErrorModal from '../../src/components/shared/ErrorModal';
 import SuccessModal from '../../src/components/shared/SuccessModal';
 
@@ -39,6 +45,10 @@ export default function DocumentDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [favorite, setFavorite] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [reading, setReading] = useState(false);
+  // TODO : brancher la note moyenne + la note de l'utilisateur sur l'API
+  // dès qu'un endpoint dédié sera exposé côté backend.
+  const [rating, setRating] = useState(0);
   const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
@@ -60,6 +70,50 @@ export default function DocumentDetailScreen() {
 
   const handleDownload = async () => {
     setDownloading(true);
+    logStep('bouton Télécharger', { id, nom: name });
+    try {
+      const uri = await downloadDocument(id, name);
+      logStep('partage système', uri);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: name,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        setSuccessMessage('Le document a été téléchargé dans vos fichiers.');
+      }
+    } catch (e) {
+      logError('LECTURE', 'échec', e.message);
+      setErrorMessage(e.message || 'Impossible de télécharger ce document pour le moment.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        title: name,
+        message: `Découvre "${name}" sur Congolibs 📚`,
+      });
+    } catch (e) {
+      setErrorMessage('Impossible de partager ce document pour le moment.');
+    }
+  };
+
+  const handleRead = async () => {
+    const driveId = doc?.lien_telechargement;
+    logStep('bouton Lire', { id, nom: name, lienDrive: driveId || 'absent (API publique)' });
+    if (driveId) {
+      router.push({ pathname: '/reader', params: { driveId, title: name } });
+      return;
+    }
+    // L'API publique n'expose pas le lien du fichier (volontaire côté
+    // sécurité). On récupère donc le PDF via l'endpoint de téléchargement et
+    // on l'ouvre avec le lecteur du système : c'est la seule façon d'afficher
+    // le contenu réel, la WebView Android ne rendant pas les PDF.
+    setReading(true);
     try {
       const uri = await downloadDocument(id, name);
       if (await Sharing.isAvailableAsync()) {
@@ -72,40 +126,16 @@ export default function DocumentDetailScreen() {
         setSuccessMessage('Le document a été téléchargé dans vos fichiers.');
       }
     } catch (e) {
-      setErrorMessage(e.message || 'Impossible de télécharger ce document pour le moment.');
+      logError('LECTURE', 'échec', e.message);
+      setErrorMessage(e.message || "Impossible d'ouvrir ce document pour le moment.");
     } finally {
-      setDownloading(false);
+      setReading(false);
     }
-  };
-
-  const handleRead = () => {
-    const driveId = doc?.lien_telechargement;
-    if (driveId) {
-      router.push({ pathname: '/reader', params: { driveId, title: name } });
-      return;
-    }
-    // TEMPORAIRE — le lecteur WebView ne rend pas les PDF sur Android.
-    // TODO : dès que le backend expose lien_telechargement (ID Google Drive)
-    // côté utilisateur connecté, la lecture utilisera la preview Drive.
-    // En attendant, on ouvre l'aperçu HTML de démonstration.
-    router.push({ pathname: '/reader', params: { html: '1', title: name } });
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
-
-      <View style={styles.topBar}>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
-          hitSlop={12}
-        >
-          <ArrowLeft size={22} color={colors.text} />
-        </Pressable>
-        <Text style={styles.topTitle}>Détail du document</Text>
-        <View style={styles.backButton} />
-      </View>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
       {loading && !doc && !fallbackName ? (
         <ActivityIndicator
@@ -115,81 +145,136 @@ export default function DocumentDetailScreen() {
         />
       ) : (
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* Fond flouté + dégradé */}
+          <View style={styles.hero}>
+            <ImageBackground source={placeholder} style={styles.heroImage} blurRadius={2}>
+              <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFill} />
+              <LinearGradient
+                colors={['rgba(6,10,13,0.25)', colors.background]}
+                locations={[0, 1]}
+                style={StyleSheet.absoluteFill}
+              />
+            </ImageBackground>
+
+            <Pressable
+              onPress={() => router.back()}
+              style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+              hitSlop={12}
+            >
+              <ArrowLeft size={22} color={colors.surface} />
+            </Pressable>
+
+            {/* Tag du type de document : uniquement sur la vue détail, en haut à droite */}
+            <View style={styles.heroTag}>
+              <Tag size={13} color={colors.primaryDark} />
+              <Text style={styles.heroTagText}>{TYPE_LABELS[type] || type}</Text>
+            </View>
+          </View>
+
+          {/* Couverture nette flottante */}
           <View style={styles.coverWrap}>
             <Image source={placeholder} style={styles.cover} resizeMode="cover" />
           </View>
 
-          <Text style={styles.title}>{name}</Text>
-          {author ? <Text style={styles.author}>{author}</Text> : null}
+          <View style={styles.content}>
+            <Text style={styles.title}>{name}</Text>
+            {author ? <Text style={styles.author}>{author}</Text> : null}
 
-          <View style={styles.badgeRow}>
-            <View style={styles.badge}>
-              <Tag size={13} color={colors.primaryDark} />
-              <Text style={styles.badgeText}>{TYPE_LABELS[type] || type}</Text>
+            {/* Notation par étoiles */}
+            <View style={styles.ratingRow}>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <Pressable
+                  key={value}
+                  onPress={() => setRating(value)}
+                  hitSlop={6}
+                  style={({ pressed }) => pressed && styles.pressed}
+                >
+                  <Star
+                    size={24}
+                    color={colors.primaryDark}
+                    fill={value <= rating ? colors.primaryDark : 'none'}
+                  />
+                </Pressable>
+              ))}
+              {rating > 0 ? (
+                <Text style={styles.ratingValue}>{rating}/5</Text>
+              ) : (
+                <Text style={styles.ratingHint}>Notez ce document</Text>
+              )}
             </View>
-            {date ? (
-              <View style={styles.badge}>
-                <CalendarDays size={13} color={colors.primaryDark} />
-                <Text style={styles.badgeText}>{date}</Text>
-              </View>
-            ) : null}
-          </View>
 
-          <View style={styles.card}>
-            <View style={styles.cardRow}>
-              <View style={styles.cardIcon}>
-                <BookOpen size={20} color={colors.primaryDark} />
-              </View>
-              <View style={styles.cardTexts}>
-                <Text style={styles.cardLabel}>Description</Text>
-                <Text style={styles.cardValue}>
-                  {author
-                    ? `Document ${TYPE_LABELS[type] || type} issu de la bibliothèque Congolibs. Consultez son contenu, ajoutez-le à vos favoris ou téléchargez-le pour le lire hors connexion.`
-                    : 'Ce document fait partie de la bibliothèque Congolibs. Sa fiche complète sera disponible après synchronisation.'}
-                </Text>
-              </View>
+            <View style={styles.badgeRow}>
+              {date ? (
+                <View style={styles.badge}>
+                  <CalendarDays size={13} color={colors.primaryDark} />
+                  <Text style={styles.badgeText}>{date}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            {/* Description */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>Description</Text>
+              <Text style={styles.sectionText}>
+                {author
+                  ? `Document ${TYPE_LABELS[type] || type} issu de la bibliothèque Congolibs. Consultez son contenu, ajoutez-le à vos favoris ou téléchargez-le pour le lire hors connexion.`
+                  : 'Ce document fait partie de la bibliothèque Congolibs. Sa fiche complète sera disponible après synchronisation.'}
+              </Text>
+            </View>
+              
+            {/* Actions à la suite */}
+            <View style={styles.actionRow}>
+              <Pressable
+                style={({ pressed }) => [styles.readButton, pressed && styles.pressed]}
+                onPress={handleRead}
+                disabled={reading}
+              >
+                {reading ? (
+                  <ActivityIndicator size="small" color={colors.surface} />
+                ) : (
+                  <BookOpen size={19} color={colors.surface} />
+                )}
+                <Text style={styles.readText}>Lire</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+                onPress={handleDownload}
+                disabled={downloading}
+              >
+                {downloading ? (
+                  <ActivityIndicator size="small" color={colors.primaryDark} />
+                ) : (
+                  <Download size={19} color={colors.primaryDark} />
+                )}
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+                onPress={handleShare}
+              >
+                <Share2 size={19} color={colors.primaryDark} />
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.iconButton,
+                  favorite && styles.iconButtonOn,
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => setFavorite((f) => !f)}
+              >
+                <Heart
+                  size={19}
+                  color={favorite ? colors.surface : colors.primaryDark}
+                  fill={favorite ? colors.surface : 'none'}
+                />
+              </Pressable>
             </View>
           </View>
-
-          <Pressable
-            style={({ pressed }) => [styles.readButton, pressed && styles.pressed]}
-            onPress={handleRead}
-          >
-            <BookOpen size={20} color={colors.surface} />
-            <Text style={styles.readText}>Lire le document</Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.favoriteButton,
-              favorite && styles.favoriteButtonOn,
-              pressed && styles.pressed,
-            ]}
-            onPress={() => setFavorite((f) => !f)}
-          >
-            <Heart
-              size={20}
-              color={favorite ? colors.surface : colors.primaryDark}
-              fill={favorite ? colors.surface : 'none'}
-            />
-            <Text style={[styles.favoriteText, favorite && styles.favoriteTextOn]}>
-              {favorite ? 'Ajouté aux favoris' : 'Ajouter aux favoris'}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={({ pressed }) => [styles.downloadButton, pressed && styles.pressed]}
-            onPress={handleDownload}
-            disabled={downloading}
-          >
-            <Download size={20} color={colors.surface} />
-            <Text style={styles.downloadText}>
-              {downloading ? 'Téléchargement…' : 'Télécharger'}
-            </Text>
-          </Pressable>
         </ScrollView>
       )}
 
@@ -199,57 +284,80 @@ export default function DocumentDetailScreen() {
   );
 }
 
+const HERO_HEIGHT = 280;
+const COVER_WIDTH = 148;
+const COVER_HEIGHT = 208;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 56,
-    paddingBottom: 12,
+  loader: {
+    marginTop: 80,
+  },
+  scrollContent: {
+    paddingBottom: 44,
+  },
+  hero: {
+    height: HERO_HEIGHT,
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
   },
   backButton: {
+    position: 'absolute',
+    top: 54,
+    left: 16,
     width: 42,
     height: 42,
     borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(6, 10, 13, 0.35)',
   },
-  topTitle: {
-    ...typography.subtitle,
-    fontSize: 17,
-  },
-  loader: {
-    marginTop: 80,
-  },
-  content: {
-    padding: 24,
+  heroTag: {
+    position: 'absolute',
+    top: 54,
+    right: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: 44,
+    gap: 6,
+    backgroundColor: colors.surface,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  heroTagText: {
+    fontFamily: fonts.poppinsSemiBold,
+    fontSize: 12,
+    color: colors.primaryDark,
   },
   coverWrap: {
+    alignSelf: 'center',
+    marginTop: -(COVER_HEIGHT / 2 + 30),
     borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 20,
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 6,
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
   cover: {
-    width: 168,
-    height: 232,
+    width: COVER_WIDTH,
+    height: COVER_HEIGHT,
+  },
+  content: {
+    paddingHorizontal: 24,
+    alignItems: 'center',
   },
   title: {
     ...typography.title,
     fontSize: 22,
     textAlign: 'center',
+    marginTop: 18,
   },
   author: {
     ...typography.body,
@@ -257,11 +365,27 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 4,
   },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 14,
+  },
+  ratingValue: {
+    ...typography.caption,
+    fontFamily: fonts.poppinsSemiBold,
+    color: colors.primaryDark,
+    marginLeft: 6,
+  },
+  ratingHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginLeft: 6,
+  },
   badgeRow: {
     flexDirection: 'row',
     gap: 8,
     marginTop: 14,
-    marginBottom: 8,
   },
   badge: {
     flexDirection: 'row',
@@ -277,95 +401,61 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.primaryDark,
   },
-  card: {
-    alignSelf: 'stretch',
-    backgroundColor: colors.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(6, 10, 13, 0.07)',
-    padding: 16,
-    marginTop: 16,
-  },
-  cardRow: {
+  actionRow: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  cardIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(8, 138, 73, 0.10)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardTexts: {
-    flex: 1,
-  },
-  cardLabel: {
-    ...typography.caption,
-    fontFamily: fonts.poppinsSemiBold,
-    fontSize: 12,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  cardValue: {
-    ...typography.caption,
-    fontSize: 13,
-    lineHeight: 20,
-    color: colors.text,
-  },
-  favoriteButton: {
     alignSelf: 'stretch',
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 10,
-    borderWidth: 1.5,
-    borderColor: colors.primaryDark,
-    borderRadius: 16,
-    paddingVertical: 15,
-    marginTop: 20,
+    marginTop: 22,
   },
   readButton: {
-    alignSelf: 'stretch',
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
     backgroundColor: colors.primaryDark,
     borderRadius: 16,
-    paddingVertical: 16,
-    marginTop: 20,
+    paddingVertical: 15,
   },
   readText: {
     ...typography.button,
     fontSize: 16,
   },
-  favoriteButtonOn: {
-    backgroundColor: colors.primaryDark,
-  },
-  favoriteText: {
-    ...typography.button,
-    color: colors.primaryDark,
-  },
-  favoriteTextOn: {
-    color: colors.surface,
-  },
-  downloadButton: {
-    alignSelf: 'stretch',
-    flexDirection: 'row',
+  iconButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    backgroundColor: colors.primaryDark,
-    borderRadius: 16,
-    paddingVertical: 16,
-    marginTop: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  downloadText: {
-    ...typography.button,
-    fontSize: 16,
+  iconButtonOn: {
+    backgroundColor: colors.primaryDark,
+    borderColor: colors.primaryDark,
+  },
+  section: {
+    alignSelf: 'stretch',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 18,
+    marginTop: 26,
+  },
+  sectionLabel: {
+    ...typography.caption,
+    fontFamily: fonts.poppinsSemiBold,
+    fontSize: 12,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  sectionText: {
+    ...typography.body,
+    fontSize: 14,
+    lineHeight: 22,
+    color: colors.text,
   },
   pressed: {
     opacity: 0.7,
