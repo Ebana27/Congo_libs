@@ -38,7 +38,7 @@ jobs:
 
       - name: Build release APK
         working-directory: App/android
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --no-daemon --console=plain
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

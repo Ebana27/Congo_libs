@@ -14,7 +14,7 @@ Instructions pour les agents de code / collaborateurs travaillant sur l'applicat
 ```
 App/
 ├── app/                 # écrans + layouts (expo-router)
-│   ├── _layout.js       # layout racine (Stack + splash)
+│   ├── _layout.js       # layout racine (Stack)
 │   ├── (tabs)/          # navigation par onglets + header custom
 │   │   ├── _layout.js   # onglets (Accueil, Bibliothèque, Découverte, Profil…)
 │   │   ├── index.js     # Accueil « Congolibs »
@@ -23,7 +23,7 @@ App/
 │   │   ├── add.js       # Ajouter un document (bientôt disponible)
 │   │   └── profil.js    # Profil
 │   ├── auth/            # Connexion / inscription / mot de passe
-│   ├── onboarding/      # Slides d'introduction (index = splash + check API)
+│   ├── onboarding/      # Slides d'introduction (index = chargement + check API)
 │   ├── document/        # Vue détail d'un document ([id].js)
 │   └── *.js             # Écrans autonomes (settings, notifications, help, webview)
 ├── src/
@@ -69,4 +69,22 @@ npm run android   # démarrer sur Android
 npm run ios       # démarrer sur iOS
 npm run web       # démarrer sur le web
 npm run icons     # générer toutes les icônes de l'app à partir de assets/images/logo.png
+npm run build:apk # APK release local (arm64-v8a + armeabi-v7a uniquement)
 ```
+
+## Build APK release
+
+L'APK se compile avec **uniquement les deux ABIs utilisées** (ARM64 + ARMv7a) et R8 +
+`shrinkResources` actifs. Le sélectif d'ABI n'est **pas** porté par `abiFilters` de
+`app.json` (ignoré par le plugin sur ce SDK) : il passe par le flag Gradle
+`-PreactNativeArchitectures`, présent dans `npm run build:apk` et dans
+`.github/workflows/build-android-apk.yml`. Ne pas le retirer, sinon l'APK ré-embarque
+x86/x86_64 inutiles.
+
+Le premier build local télécharge le SDK Android, le NDK 27 et CMake (~1 Go) : prévoir
+de la place disque et du temps. Le build GitHub Actions fait la même chose sur les
+runners, ce qui est plus rapide que le local.
+
+L'APK release est signé avec le **keystore de debug** (`signingConfig signingConfigs.debug`
+généré par `expo prebuild`) : il s'installe mais n'est pas publiable sur le Play Store.
+Générer un keystore propre avant toute publication.
