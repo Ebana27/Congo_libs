@@ -319,7 +319,11 @@ export const styles = StyleSheet.create({
     color: colors.text,
   },
   eyeIcon: {
-    paddingLeft: 8,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -11,
   },
   termsContainer: {
     flexDirection: 'row',

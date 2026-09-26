@@ -93,7 +93,11 @@ export default function Login() {
               onChangeText={setPassword}
             />
             {/* Toggle affichage/masquage du mot de passe */}
-            <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+            <Pressable
+              onPress={() => setShowPassword(!showPassword)}
+              hitSlop={8}
+              style={styles.eyeIcon}
+            >
               {showPassword ? (
                 <EyeIcon size={22} color={colors.text} />
               ) : (
@@ -121,16 +125,11 @@ export default function Login() {
           <View style={styles.separator} />
         </View>
 
-        {/* Connexion via Google ou Apple */}
+        {/* Connexion via Google */}
         <View style={styles.socialContainer}>
-          {/* Bouton avec icon google et apple */}
           <Pressable style={styles.socialButton} onPress={() => { alert("Connexion en cours..."); }}>
             <Image source={require('../../assets/icons/external_icons/logo_google.png')} style={styles.icon} />
             <Text style={styles.socialButtonText}>Google</Text>
-          </Pressable>
-          <Pressable style={styles.socialButton} onPress={() => { alert("Connexion en cours..."); }}>
-            <Image source={require('../../assets/icons/external_icons/logo_apple.png')} style={styles.icon} />
-            <Text style={styles.socialButtonText}>Apple</Text>
           </Pressable>
         </View>
 
@@ -225,7 +224,11 @@ export const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   eyeIcon: {
-    paddingLeft: 8,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -11,
   },
   forgotPasswordLink: {
     alignSelf: 'flex-end',
