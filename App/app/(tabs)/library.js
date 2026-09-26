@@ -13,6 +13,8 @@ import { colors, typography } from '../../src/constants/themes';
 import Filter from '../../src/components/books/Filter';
 import BookCard from '../../src/components/books/BookCard';
 
+const placeholder = require('../../assets/images/home/placeholder-book.png');
+
 const FILTERS = ['Tous', 'Favoris', 'Téléchargés', 'Récents'];
 
 const BOOKS = [
@@ -25,22 +27,28 @@ const BOOKS = [
 ];
 
 export default function LibraryScreen() {
-  const { filter } = useLocalSearchParams(); // ex: { filter: 'Favoris' } depuis le profil
+  const params = useLocalSearchParams();
+  const filter = params.filter;
+
   const [activeFilter, setActiveFilter] = useState(filter ?? 'Tous');
   const [search, setSearch] = useState('');
 
-  // Si l'utilisateur revient sur l'onglet avec un autre filtre
   useEffect(() => {
     if (filter) setActiveFilter(filter);
   }, [filter]);
 
   const filteredBooks = useMemo(() => {
+    const term = search.trim().toLowerCase();
     return BOOKS.filter((book) => {
       const matchFilter =
         activeFilter === 'Tous' || book.category === activeFilter;
-      const matchSearch = book.name
-        .toLowerCase()
-        .includes(search.toLowerCase());
+      const matchSearch =
+        term.length === 0 ||
+        [book.name, book.txt, book.category].some((value) =>
+          String(value || '')
+            .toLowerCase()
+            .includes(term)
+        );
       return matchFilter && matchSearch;
     });
   }, [activeFilter, search]);
@@ -48,34 +56,46 @@ export default function LibraryScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
-      {/* Identique à la découverte */}
+
       <TextInput
         style={styles.input}
-        placeholder="Rechercher dans vos documents téléchargés"
+        placeholder="Rechercher dans vos documents..."
         placeholderTextColor={colors.textSecondary}
         value={search}
         onChangeText={setSearch}
+        returnKeyType="search"
+        onSubmitEditing={() => setSearch('')}
       />
 
-      <View style={styles.filters}>
-        {FILTERS.map((name) => (
-          <Filter
-            key={name}
-            name={name}
-            active={activeFilter === name}
-            onPress={() => setActiveFilter(name)}
-          />
-        ))}
+      {/* Conteneur des onglets revu */}
+      <View style={styles.filtersWrapper}>
+        <View style={styles.filters}>
+          {FILTERS.map((name) => (
+            <Filter
+              key={name}
+              name={name}
+              active={activeFilter === name}
+              onPress={() => setActiveFilter(name)}
+            />
+          ))}
+        </View>
       </View>
 
       <FlatList
+        style={styles.list}
         data={filteredBooks}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
-          <BookCard id={item.id} name={item.name} txt={item.txt} size="large" />
+          <BookCard
+            id={item.id}
+            name={item.name}
+            image={placeholder}
+            size="large"
+          />
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -95,28 +115,34 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface, // blanc, comme la découverte
+    backgroundColor: colors.surface,
     paddingTop: 12,
     paddingHorizontal: 16,
   },
-
-  // Identiques à la découverte
   input: {
     ...typography.body,
-    fontSize: 14,
-    backgroundColor: colors.background,
+    fontSize: 15,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     color: colors.text,
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  list: {
+    flex: 1,
+  },
+  filtersWrapper: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    marginBottom: 16,
   },
   filters: {
     flexDirection: 'row',
-    gap: 8,
-    paddingBottom: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
   },
   listContent: {
     paddingBottom: 24,
@@ -125,8 +151,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
-
-  // État vide
   empty: {
     alignItems: 'center',
     marginTop: 70,

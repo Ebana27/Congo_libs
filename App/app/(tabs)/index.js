@@ -1,7 +1,5 @@
-import { useRef, useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import {
-  Animated,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,59 +7,139 @@ import {
   StatusBar,
   ActivityIndicator,
   Pressable,
+  TextInput,
+  TouchableOpacity,
 } from 'react-native';
-import { router } from 'expo-router';
 import { colors, typography, fonts } from '../../src/constants/themes';
+import { router } from 'expo-router';
+import { Search } from 'lucide-react-native';
 import BookCard from '../../src/components/books/BookCard';
 import { getDocuments } from '../../src/services/api/congolibsAPI';
 
-// ── Visuels ─────────────────────────────────────────────────────────────────
-const heroVisual = require('../../assets/images/home/congolibs-hero-visual.png');
 const placeholder = require('../../assets/images/home/placeholder-book.png');
-const heroDims = Image.resolveAssetSource(heroVisual);
-
-// ── Palette d'appoint (rappel des visuels verts) ────────────────────────────
-const green = {
-  ink: '#0F3D2A',    // titres sur fond clair
-  mid: '#1E7A4E',    // accents / liens
-  mint: '#F0F7F2',   // fond de la carte héro (proche du fond du visuel)
-  soft: '#E7F2EB',   // fonds discrets
-  border: '#DCE9E1', // bordures
-};
 
 const SUGGESTIONS = [
-  { id: '1', name: 'Littérature Africaine', txt: 'Roman', image: placeholder },
-  { id: '2', name: 'Mathématiques Bac S2', txt: 'Sciences', image: placeholder },
-  { id: '3', name: 'Histoire du Congo', txt: 'Histoire', image: placeholder },
+  { id: '1', nom: 'Littérature Africaine', type: 'livre' },
+  { id: '2', nom: 'Mathématiques Bac S2', type: 'bac' },
+  { id: '3', nom: 'Histoire du Congo', type: 'concours' },
 ];
 
-const TYPE_LABELS = { livre: 'Livre', concours: 'Concours', bac: 'Bac' };
-
-const FILTERS = [
-  { key: 'all', label: 'Tout' },
-  { key: 'livre', label: 'Livres' },
-  { key: 'concours', label: 'Concours' },
-  { key: 'bac', label: 'Bac' },
+const MOMENTS = [
+  { from: 0, to: 5, greeting: 'Bonne nuit', flavor: 'soir' },
+  { from: 5, to: 9, greeting: 'Bonjour', flavor: 'jour' },
+  { from: 9, to: 12, greeting: 'Bonjour', flavor: 'jour' },
+  { from: 12, to: 14, greeting: 'Bon après-midi', flavor: 'jour' },
+  { from: 14, to: 18, greeting: 'Bon après-midi', flavor: 'jour' },
+  { from: 18, to: 22, greeting: 'Bonsoir', flavor: 'soir' },
+  { from: 22, to: 24, greeting: 'Bonne nuit', flavor: 'soir' },
 ];
 
-const getGreeting = () => {
-  const h = new Date().getHours();
-  if (h >= 5 && h < 18) return 'Bonjour';
-  if (h >= 18 && h < 23) return 'Bonsoir';
-  return 'Bonne nuit';
+const PERIODS = [
+  {
+    id: 'rentree',
+    months: [9],
+    jour: [
+      "C'est la rentrée, on repart tranquillement.",
+      'Les nouveautés de septembre sont en ligne.',
+    ],
+    soir: [
+      "Septembre s'installe, la bibliothèque suit.",
+      'Rentrée faite, on souffle un peu.',
+    ],
+  },
+  {
+    id: 'cours',
+    months: [10, 1, 2],
+    jour: [
+      'Les cours avancent, une petite pause fait du bien.',
+      'Un document de temps en temps, ça suffit.',
+      'Profitez-en pour compléter une collection.',
+    ],
+    soir: [
+      "La journée a été longue ? Cinq minutes de lecture.",
+      "Un peu de lecture avant de dormir, si l'envie est là.",
+    ],
+  },
+  {
+    id: 'finAnnee',
+    months: [11],
+    jour: [
+      "On approche de la fin d'année, tout est à jour.",
+           'Les dernières fiches de décembre sont là.',
+    ],
+    soir: [
+      "Dernière ligne droite avant les vacances.",
+      'Les vacances arrivent, la bibliothèque reste ouverte.',
+    ],
+  },
+  {
+    id: 'reprise',
+    months: [0],
+    jour: [
+      'Nouvelle année, nouveau départ.',
+      'Les collections ont été mises à jour.',
+    ],
+    soir: [
+      'Janvier commence, on prend le temps.',
+      'On repart doucement, sans se presser.',
+    ],
+  },
+  {
+    id: 'revisions',
+    months: [3],
+    jour: [
+      'Avril, les documents sont bien rangés.',
+      "C'est le moment de remettre de l'ordre.",
+    ],
+    soir: [
+      'Un mois calme pour relire tranquillement.',
+      'Quelques fiches bien choisies et c’est l’affaire.',
+    ],
+  },
+  {
+    id: 'exams',
+    months: [4, 5],
+    jour: [
+      'Mai, les collections sont complètes.',
+      'Juin approche, tout est bien rangé.',
+    ],
+    soir: [
+      'Le soir, un peu de calme aide bien.',
+      'Dernier moment pour relire ce qui compte.',
+    ],
+  },
+  {
+    id: 'vacances',
+    months: [6, 7, 8],
+    jour: [
+      'Vacances : on lit ce qui nous fait envie.',
+      'Pas de programme, on choisit.',
+    ],
+    soir: [
+      'Vacances, lectures tranquilles.',
+      'On lit sans se presser.',
+    ],
+  },
+];
+
+const getGreeting = (date = new Date()) => {
+  const hour = date.getHours();
+  const moment = MOMENTS.find((item) => hour >= item.from && hour < item.to) || MOMENTS[0];
+  const month = date.getMonth();
+  const period = PERIODS.find((item) => item.months.includes(month)) || PERIODS[1];
+  const messages = period[moment.flavor];
+  return {
+    greeting: moment.greeting,
+    message: messages[date.getDate() % messages.length],
+  };
 };
 
 export default function HomeScreen() {
-  // Animations d'entrée décalées : en-tête/héro, puis contenu
-  const introOpacity = useRef(new Animated.Value(0)).current;
-  const introShift = useRef(new Animated.Value(18)).current;
-  const contentOpacity = useRef(new Animated.Value(0)).current;
-  const contentShift = useRef(new Animated.Value(18)).current;
-
   const [documents, setDocuments] = useState([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [errorDocs, setErrorDocs] = useState(false);
-  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -77,146 +155,125 @@ export default function HomeScreen() {
     };
   }, []);
 
-  useEffect(() => {
-    Animated.stagger(140, [
-      Animated.parallel([
-        Animated.timing(introOpacity, { toValue: 1, duration: 650, useNativeDriver: true }),
-        Animated.timing(introShift, { toValue: 0, duration: 650, useNativeDriver: true }),
-      ]),
-      Animated.parallel([
-        Animated.timing(contentOpacity, { toValue: 1, duration: 650, useNativeDriver: true }),
-        Animated.timing(contentShift, { toValue: 0, duration: 650, useNativeDriver: true }),
-      ]),
-    ]).start();
-  }, [introOpacity, introShift, contentOpacity, contentShift]);
-
   const base = errorDocs ? SUGGESTIONS : documents;
-  const visible =
-    !errorDocs && filter !== 'all' ? base.filter((doc) => doc.type === filter) : base;
-  const preview = visible.slice(0, 8);
-  const noResultForFilter =
-    !errorDocs && filter !== 'all' && !loadingDocs && base.length > 0 && visible.length === 0;
+  const nouveautes = base.slice(0, 6);
+  const meilleuresListes = [...base].slice(0, 6).reverse();
+
+  const { greeting, message } = getGreeting();
+
+  const submitSearch = () => {
+    const q = search.trim();
+    if (!q) return;
+    setSearch('');
+    router.push({ pathname: '/search', params: { q } });
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* ── En-tête : salutation + notifications ── */}
-      <Animated.View style={{ opacity: introOpacity, transform: [{ translateY: introShift }] }}>
-        <View style={styles.topBar}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.greeting}>{getGreeting()} 👋</Text>
-            <Text style={styles.greetingSub}>Que lisez-vous aujourd'hui ?</Text>
-          </View>
-          <Pressable style={({ pressed }) => [styles.bell, pressed && styles.pressed]}>
-            <Text style={styles.bellIcon}>🔔</Text>
-          </Pressable>
-        </View>
+      {/* Salutation */}
+      <View style={styles.topBar}>
+        <Text style={styles.greeting}>{greeting}</Text>
+        <Text style={styles.greetingSub}>{message}</Text>
+      </View>
 
-        {/* Recherche */}
-        <Pressable
-          style={({ pressed }) => [styles.search, pressed && styles.pressed]}
-          onPress={() => router.push('/discovery')} // ⚠️ adaptez : route de votre écran de recherche
+      {/* Barre de recherche */}
+      <Pressable style={styles.searchBar} onPress={() => searchInputRef.current?.focus()}>
+        <Search size={18} color={colors.textSecondary} style={styles.searchIcon} />
+        <TextInput
+          ref={searchInputRef}
+          value={search}
+          onChangeText={setSearch}
+          onSubmitEditing={submitSearch}
+          returnKeyType="search"
+          placeholder="Rechercher un livre"
+          placeholderTextColor={colors.textSecondary}
+          style={styles.searchInput}
+        />
+      </Pressable>
+
+      {/* Nouveautés */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Nouveautés</Text>
+        <TouchableOpacity>
+          <Text style={styles.sectionLink}>Voir tout</Text>
+        </TouchableOpacity>
+      </View>
+
+      {loadingDocs ? (
+        <ActivityIndicator color={colors.primaryDark} style={styles.docsLoader} />
+      ) : nouveautes.length === 0 ? (
+        <Text style={styles.docsEmpty}>Aucun document disponible pour le moment.</Text>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.horizontalList}
         >
-          <Text style={styles.searchIcon}>🔍</Text>
-          <Text style={styles.searchPlaceholder}>Rechercher un livre, un auteur…</Text>
-        </Pressable>
-      </Animated.View>
-
-      {/* ── Carte héro ── */}
-      <Animated.View style={{ opacity: introOpacity, transform: [{ translateY: introShift }] }}>
-        <View style={styles.hero}>
-          <View style={styles.heroBody}>
-            <Text style={styles.heroChip}>BIBLIOTHÈQUE NUMÉRIQUE</Text>
-            <Text style={styles.heroTitle}>
-              Toute la connaissance congolaise, à portée de main.
-            </Text>
-            <Pressable
-              style={({ pressed }) => [styles.heroButton, pressed && styles.pressed]}
-              onPress={() => router.push('/discovery')}
-            >
-              <Text style={styles.heroButtonText}>Explorer la bibliothèque</Text>
-              <Text style={styles.heroButtonArrow}>→</Text>
-            </Pressable>
-          </View>
-          <Image
-            source={heroVisual}
-            style={[
-              styles.heroImage,
-              {
-                aspectRatio:
-                  heroDims.width > 0 && heroDims.height > 0
-                    ? heroDims.width / heroDims.height
-                    : 1.5,
-              },
-            ]}
-            resizeMode="cover"
-          />
-        </View>
-      </Animated.View>
-
-      {/* ── Filtres + bibliothèque ── */}
-      <Animated.View style={{ opacity: contentOpacity, transform: [{ translateY: contentShift }] }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-          {FILTERS.map((f) => {
-            const active = filter === f.key;
-            return (
-              <Pressable
-                key={f.key}
-                onPress={() => setFilter(f.key)}
-                style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{f.label}</Text>
-              </Pressable>
-            );
-          })}
+          {nouveautes.map((doc) => (
+            <BookCard
+              key={doc.id}
+              id={doc.id}
+              name={doc.nom}
+              image={placeholder}
+              size="medium"
+            />
+          ))}
         </ScrollView>
+      )}
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{errorDocs ? 'Suggestions' : 'Bibliothèque'}</Text>
-          <Pressable onPress={() => router.push('/discovery')} hitSlop={8}>
-            <Text style={styles.sectionLink}>Voir tout →</Text>
-          </Pressable>
-        </View>
+      {/* Meilleures listes de livres */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Meilleures listes de livres</Text>
+        <TouchableOpacity>
+          <Text style={styles.sectionLink}>Voir tout</Text>
+        </TouchableOpacity>
+      </View>
 
-        {loadingDocs ? (
-          <ActivityIndicator color={colors.primaryDark} style={styles.docsLoader} />
-        ) : preview.length === 0 ? (
-          <Text style={styles.docsEmpty}>
-            {noResultForFilter
-              ? `Aucun titre dans « ${FILTERS.find((f) => f.key === filter)?.label} » pour l'instant.`
-              : 'Aucun document disponible pour le moment. 📖'}
-          </Text>
-        ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.docsBleed}
-            contentContainerStyle={styles.row}
-          >
-            {preview.map((doc) => (
+      {!loadingDocs && meilleuresListes.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.horizontalList}
+        >
+          {meilleuresListes.map((doc) => (
+            <BookCard
+              key={`liste-${doc.id}`}
+              id={doc.id}
+              name={doc.nom}
+              image={placeholder}
+              size="medium"
+            />
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Bibliothèque complète */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>
+          {errorDocs ? 'Suggestions' : 'Bibliothèque'}
+        </Text>
+      </View>
+
+      {loadingDocs ? (
+        <ActivityIndicator color={colors.primaryDark} style={styles.docsLoader} />
+      ) : base.length === 0 ? (
+        <Text style={styles.docsEmpty}>Aucun document disponible pour le moment.</Text>
+      ) : (
+        <View style={styles.gridList}>
+          {base.map((doc) => (
+            <View key={doc.id} style={styles.gridCell}>
               <BookCard
-                key={doc.id}
                 id={doc.id}
                 name={doc.nom}
-                txt={TYPE_LABELS[doc.type] || doc.type}
                 image={placeholder}
-                size="large"
+                size="grid"
               />
-            ))}
-          </ScrollView>
-        )}
-
-        {errorDocs ? (
-          <View style={styles.offlineBanner}>
-            <Text style={styles.offlineText}>
-              ⚠️ Mode hors ligne — reconnectez-vous pour rafraîchir le contenu.
-            </Text>
-          </View>
-        ) : null}
-      </Animated.View>
-
-      <Text style={styles.footer}>Fait avec ❤️ pour la République du Congo</Text>
+            </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -230,11 +287,8 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 48,
   },
-
-  // En-tête
   topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginBottom: 20,
   },
   greeting: {
     ...typography.title,
@@ -246,135 +300,32 @@ const styles = StyleSheet.create({
     marginTop: 2,
     color: colors.textSecondary,
   },
-  bell: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: green.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 12,
-  },
-  bellIcon: {
-    fontSize: 16,
-  },
-
-  // Recherche
-  search: {
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: green.border,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 24,
   },
   searchIcon: {
-    fontSize: 14,
-    marginRight: 10,
+    marginRight: 8,
   },
-  searchPlaceholder: {
-    ...typography.body,
+  searchInput: {
     flex: 1,
-    color: colors.textSecondary,
+    ...typography.body,
+    fontSize: 15,
+    padding: 0,
   },
-
-  // Héro
-  hero: {
-    marginTop: 20,
-    backgroundColor: green.mint,
-    borderRadius: 28,
-    overflow: 'hidden',
-  },
-  heroBody: {
-    padding: 22,
-    paddingBottom: 8,
-  },
-  heroChip: {
-    alignSelf: 'flex-start',
-    fontFamily: fonts.poppinsSemiBold,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    color: green.mid,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: green.border,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    overflow: 'hidden',
-  },
-  heroTitle: {
-    marginTop: 14,
-    fontFamily: fonts.poppinsSemiBold,
-    fontSize: 23,
-    lineHeight: 31,
-    color: green.ink,
-  },
-  heroButton: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primaryDark,
-    borderRadius: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    marginTop: 16,
-    marginBottom: 16,
-  },
-  heroButtonText: {
-    fontFamily: fonts.poppinsSemiBold,
-    fontSize: 13,
-    color: colors.surface,
-  },
-  heroButtonArrow: {
-    fontSize: 14,
-    color: colors.surface,
-    marginLeft: 8,
-  },
-  heroImage: {
-    width: '100%',
-  },
-
-  // Filtres
-  filters: {
-    gap: 10,
-    paddingTop: 22,
-    paddingBottom: 4,
-    paddingRight: 24,
-  },
-  chip: {
-    paddingVertical: 9,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: green.border,
-  },
-  chipActive: {
-    backgroundColor: colors.primaryDark,
-    borderColor: colors.primaryDark,
-  },
-  chipText: {
-    fontSize: 13,
-    color: colors.text,
-  },
-  chipTextActive: {
-    fontFamily: fonts.poppinsSemiBold,
-    color: colors.surface,
-  },
-
-  // Sections
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 14,
-    marginBottom: 12,
+    marginBottom: 16,
+    marginTop: 8,
   },
   sectionTitle: {
     fontFamily: fonts.poppinsSemiBold,
@@ -382,16 +333,23 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   sectionLink: {
-    fontFamily: fonts.poppinsSemiBold,
-    fontSize: 13,
-    color: green.mid,
+    ...typography.caption,
+    color: colors.primaryDark,
+    fontWeight: '600',
   },
-  docsBleed: {
-    marginRight: -24, // la liste défile jusqu'au bord droit de l'écran
+  horizontalList: {
+    gap: 16,
+    paddingBottom: 8,
+    marginBottom: 8,
   },
-  row: {
-    gap: 14,
-    paddingRight: 24,
+  gridList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 18,
+  },
+  gridCell: {
+    width: '48%',
   },
   docsLoader: {
     marginVertical: 28,
@@ -400,29 +358,5 @@ const styles = StyleSheet.create({
     ...typography.caption,
     textAlign: 'center',
     marginVertical: 28,
-  },
-
-  // Hors ligne / pied de page
-  offlineBanner: {
-    marginTop: 20,
-    backgroundColor: green.soft,
-    borderRadius: 14,
-    padding: 12,
-  },
-  offlineText: {
-    ...typography.caption,
-    fontSize: 12,
-    textAlign: 'center',
-    color: green.ink,
-  },
-  footer: {
-    ...typography.caption,
-    fontSize: 11,
-    textAlign: 'center',
-    marginTop: 32,
-    color: colors.textSecondary,
-  },
-  pressed: {
-    opacity: 0.75,
   },
 });

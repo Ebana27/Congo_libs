@@ -8,6 +8,11 @@ export const colors = {
   textSecondary: '#074a2b',
   border: '#d5cdcd',
   danger: '#ff5f3a',
+  arc: {
+    add: '#0b0d54',
+    feedback: '#1dd572',
+    share: '#5999e6',
+  },
 };
 
 export const fonts = {

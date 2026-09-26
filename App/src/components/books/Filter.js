@@ -1,4 +1,4 @@
-import { Pressable, Text, StyleSheet } from "react-native";
+import { Pressable, Text, StyleSheet, View } from "react-native";
 import { colors, fonts } from "../../constants/themes";
 
 export default function Filter({ name, active = false, onPress }) {
@@ -6,41 +6,46 @@ export default function Filter({ name, active = false, onPress }) {
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
-        styles.chip,
-        active && styles.chipActive,
-        pressed && !active && styles.chipPressed,
+        styles.tab,
+        pressed && !active && styles.tabPressed,
       ]}
     >
       <Text style={[styles.text, active && styles.textActive]}>{name}</Text>
+      {/* Ligne verte de soulignement pour l'onglet actif */}
+      {active && <View style={styles.activeIndicator} />}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  chip: {
-    height: 38,                    // hauteur fixe → plus de déformation
-    paddingHorizontal: 18,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    justifyContent: "center",      // texte centré verticalement
+  tab: {
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
   },
-  chipActive: {
-    backgroundColor: colors.primaryDark,
-    borderColor: colors.primaryDark,
-  },
-  chipPressed: {
-    opacity: 0.7,                  // feedback visuel sans changer la taille
+  tabPressed: {
+    opacity: 0.6,
   },
   text: {
-    fontFamily: fonts.poppinsSemiBold, // même police dans les 2 états
-    fontSize: 13,
-    color: colors.text,
-    // pas de includeFontPadding: false ici → plus de texte coupé
+    fontFamily: fonts.poppinsMedium,
+    fontSize: 14,
+    color: colors.textSecondary, // Lisible sur fond blanc
   },
   textActive: {
-    color: colors.surface,
+    fontFamily: fonts.poppinsSemiBold,
+    fontSize: 14.5,
+    color: colors.primaryDark,
+  },
+  activeIndicator: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: colors.primaryDark,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
   },
 });
