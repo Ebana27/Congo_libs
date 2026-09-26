@@ -12,7 +12,7 @@ import {
   Settings,
   LogOut,
   ChevronRight,
-  Download,
+  Download, 
   Heart,
   HelpCircle,
   Info,
@@ -21,6 +21,7 @@ import {
 import { colors, typography, fonts } from '../../src/constants/themes';
 import {
   getCurrentUser,
+  getCachedUser,
   loadToken,
   logout as apiLogout,
 } from '../../src/services/api/congolibsAPI';
@@ -58,19 +59,28 @@ export default function ProfilScreen() {
   useEffect(() => {
     let mounted = true;
     const init = async () => {
+      // 1) On affiche immédiatement la copie en cache (aucun clignotement).
+      const cached = await getCachedUser().catch(() => null);
+      if (mounted && cached) setUser(cached);
+
       const token = await loadToken().catch(() => '');
       if (!mounted) return;
       if (!token) {
         setLoggedIn(false);
+        setUser(null);
         setLoading(false);
         return;
       }
       setLoggedIn(true);
+
+      // 2) Puis on rafraîchit depuis l'API (le cache est mis à jour dans getCurrentUser).
       getCurrentUser()
         .then((data) => mounted && setUser(data))
         .catch(async () => {
           const still = await loadToken().catch(() => '');
-          if (mounted && !still) setLoggedIn(false);
+          if (!mounted) return;
+          // Session expirée et aucun cache : on repasse en état déconnecté.
+          if (!still && !cached) setLoggedIn(false);
         })
         .finally(() => mounted && setLoading(false));
     };
@@ -139,7 +149,13 @@ export default function ProfilScreen() {
             <Text style={styles.avatarText}>{getInitials()}</Text>
           </View>
           {/* TODO : brancher la route édition du profil */}
-          <Pressable style={styles.editBadge} onPress={() => router.push('/settings')} hitSlop={8}>
+          <Pressable
+            style={styles.editBadge}
+            onPress={() => router.push('/profile-edit')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Modifier le profil"
+          >
             <Pencil size={13} color={colors.primaryDark} />
           </Pressable>
         </View>
@@ -179,7 +195,9 @@ export default function ProfilScreen() {
         <MenuItem
           icon={Download}
           label="Mes téléchargements"
-          onPress={() => router.push('/library')}
+          onPress={() =>
+            router.push({ pathname: '/library', params: { filter: 'Téléchargés' } })
+          }
         />
         <MenuItem
           icon={Heart}
