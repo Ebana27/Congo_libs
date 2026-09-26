@@ -15,10 +15,6 @@ const hasSeenOnboarding = async () => {
   }
 };
 
-const MIN_SPLASH_MS = 3000;
-
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 export default function OnboardingScreen() {
   useEffect(() => {
     let mounted = true;
@@ -33,7 +29,6 @@ export default function OnboardingScreen() {
         return seen ? 'login' : 'intro';
       })();
 
-      await wait(MIN_SPLASH_MS);
       if (!mounted) return;
 
       if (destination === 'tabs') {
@@ -69,6 +64,7 @@ const styles = StyleSheet.create({
   logo: {
     ...typography.title,
     fontSize: 36,
+    lineHeight: 50,
   },
   loader: {
     marginTop: 20,

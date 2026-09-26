@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, typography, fonts } from '../../src/constants/themes';
+import { colors, typography } from '../../src/constants/themes';
 import {
   BookStackIcon,
   SearchDownloadIcon,

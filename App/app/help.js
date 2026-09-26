@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { Linking, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import {
+  Linking,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import {
@@ -7,6 +15,7 @@ import {
   ChevronDown,
   Mail,
   MessageCircle,
+  Phone,
   Send,
 } from 'lucide-react-native';
 import { colors, typography, fonts } from '../src/constants/themes';
@@ -30,9 +39,15 @@ const FAQ = [
   },
 ];
 
-// TODO : remplace par tes vraies coordonnées
-const CONTACT_EMAIL = 'support@congolibs.com';
-const WHATSAPP_URL = 'https://wa.me/243000000000'; // format international sans +
+const CONTACT_EMAIL = 'hello@congolibs.space';
+const CONTACT_PHONE = '+242067756084';
+const WHATSAPP_URL = 'https://wa.me/242067756084'; // format international sans +
+
+const openLink = (url) => {
+  Linking.canOpenURL(url)
+    .then((supported) => (supported ? Linking.openURL(url) : null))
+    .catch(() => {});
+};
 
 function FaqItem({ item, open, onToggle }) {
   return (
@@ -56,7 +71,7 @@ export default function HelpScreen() {
   const mailto = (subject) =>
     Linking.openURL(
       `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}`
-    );
+    ).catch(() => {});
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -66,6 +81,8 @@ export default function HelpScreen() {
           onPress={() => router.back()}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
           hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Retour"
         >
           <ArrowLeft size={22} color={colors.text} />
         </Pressable>
@@ -73,71 +90,119 @@ export default function HelpScreen() {
         <View style={styles.backButton} />
       </View>
 
-      {/* Intro */}
-      <View style={styles.hero}>
-        <Text style={styles.heroTitle}>Comment pouvons-nous t'aider ?</Text>
-        <Text style={styles.heroText}>
-          Consulte la FAQ ci-dessous ou contacte notre équipe, on répond vite.
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Intro */}
+        <View style={styles.hero}>
+          <Text style={styles.heroTitle}>Comment pouvons-nous t'aider ?</Text>
+          <Text style={styles.heroText}>
+            Consulte la FAQ ci-dessous ou contacte notre équipe, on répond vite.
+          </Text>
+        </View>
+
+        {/* FAQ */}
+        <Text style={styles.sectionTitle}>Questions fréquentes</Text>
+        <View style={styles.card}>
+          {FAQ.map((item, i) => (
+            <FaqItem
+              key={i}
+              item={item}
+              open={openIndex === i}
+              onToggle={() => setOpenIndex(openIndex === i ? null : i)}
+            />
+          ))}
+        </View>
+
+        {/* Contact */}
+        <Text style={styles.sectionTitle}>Nous contacter</Text>
+        <View style={styles.card}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.contactRow,
+              styles.rowDivider,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => mailto('Demande d’aide — Congolibs')}
+            accessibilityRole="button"
+            accessibilityLabel={`Écrire à ${CONTACT_EMAIL}`}
+          >
+            <View style={styles.bubble}>
+              <Mail size={18} color={colors.primaryDark} />
+            </View>
+            <View style={styles.contactTexts}>
+              <Text style={styles.contactTitle}>Email</Text>
+              <Text style={styles.contactValue} numberOfLines={1}>
+                {CONTACT_EMAIL}
+              </Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.contactRow,
+              styles.rowDivider,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => openLink(`tel:${CONTACT_PHONE}`)}
+            accessibilityRole="button"
+            accessibilityLabel={`Appeler le ${CONTACT_PHONE}`}
+          >
+            <View style={styles.bubble}>
+              <Phone size={18} color={colors.primaryDark} />
+            </View>
+            <View style={styles.contactTexts}>
+              <Text style={styles.contactTitle}>Téléphone</Text>
+              <Text style={styles.contactValue} numberOfLines={1}>
+                {CONTACT_PHONE}
+              </Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.contactRow,
+              styles.rowDivider,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => openLink(WHATSAPP_URL)}
+            accessibilityRole="button"
+            accessibilityLabel="Écrire sur WhatsApp"
+          >
+            <View style={styles.bubble}>
+              <MessageCircle size={18} color={colors.primaryDark} />
+            </View>
+            <View style={styles.contactTexts}>
+              <Text style={styles.contactTitle}>WhatsApp</Text>
+              <Text style={styles.contactValue} numberOfLines={1}>
+                Réponse sous 24 h
+              </Text>
+            </View>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [styles.contactRow, pressed && styles.pressed]}
+            onPress={() => mailto('Signalement de problème — Congolibs')}
+            accessibilityRole="button"
+            accessibilityLabel="Signaler un problème"
+          >
+            <View style={[styles.bubble, styles.bubbleDanger]}>
+              <Send size={18} color={colors.danger} />
+            </View>
+            <View style={styles.contactTexts}>
+              <Text style={[styles.contactTitle, { color: colors.danger }]}>
+                Signaler un problème
+              </Text>
+              <Text style={styles.contactValue}>Un bug ? Un document manquant ?</Text>
+            </View>
+          </Pressable>
+        </View>
+
+        <Text style={styles.footNote}>
+          Congolibs — Bibliothèque partagée de cours, d’annales et de fiches.
         </Text>
-      </View>
-
-      {/* FAQ */}
-      <Text style={styles.sectionTitle}>Questions fréquentes</Text>
-      <View style={styles.card}>
-        {FAQ.map((item, i) => (
-          <FaqItem
-            key={i}
-            item={item}
-            open={openIndex === i}
-            onToggle={() => setOpenIndex(openIndex === i ? null : i)}
-          />
-        ))}
-      </View>
-
-      {/* Contact */}
-      <Text style={styles.sectionTitle}>Nous contacter</Text>
-      <View style={styles.card}>
-        <Pressable
-          style={({ pressed }) => [styles.contactRow, pressed && styles.pressed]}
-          onPress={() => mailto("Demande d'aide — Congolibs")}
-        >
-          <View style={styles.bubble}>
-            <Mail size={18} color={colors.primaryDark} />
-          </View>
-          <View style={styles.contactTexts}>
-            <Text style={styles.contactTitle}>Email</Text>
-            <Text style={styles.contactValue}>{CONTACT_EMAIL}</Text>
-          </View>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [styles.contactRow, styles.rowDivider, pressed && styles.pressed]}
-          onPress={() => Linking.openURL(WHATSAPP_URL)}
-        >
-          <View style={styles.bubble}>
-            <MessageCircle size={18} color={colors.primaryDark} />
-          </View>
-          <View style={styles.contactTexts}>
-            <Text style={styles.contactTitle}>WhatsApp</Text>
-            <Text style={styles.contactValue}>Réponse sous 24 h</Text>
-          </View>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [styles.contactRow, pressed && styles.pressed]}
-          onPress={() => mailto('Signalement de problème — Congolibs')}
-        >
-          <View style={[styles.bubble, styles.bubbleDanger]}>
-            <Send size={18} color={colors.danger} />
-          </View>
-          <View style={styles.contactTexts}>
-            <Text style={[styles.contactTitle, { color: colors.danger }]}>
-              Signaler un problème
-            </Text>
-            <Text style={styles.contactValue}>Un bug ? Un document manquant ?</Text>
-          </View>
-        </Pressable>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -167,6 +232,9 @@ const styles = StyleSheet.create({
     ...typography.subtitle,
     fontSize: 18,
   },
+  scrollContent: {
+    paddingBottom: 28,
+  },
   hero: {
     backgroundColor: colors.primaryDark,
     marginHorizontal: 16,
@@ -192,7 +260,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-    color: colors.textSecondary,
+    color: colors.primaryDark,
     marginBottom: 8,
     marginHorizontal: 20,
   },
@@ -252,11 +320,21 @@ const styles = StyleSheet.create({
   contactTitle: {
     ...typography.body,
     fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
   },
   contactValue: {
     ...typography.caption,
-    fontSize: 12,
+    fontSize: 13,
+    color: colors.textSecondary,
     marginTop: 1,
+  },
+  footNote: {
+    ...typography.caption,
+    fontSize: 12,
+    textAlign: 'center',
+    color: colors.textSecondary,
+    marginTop: 4,
   },
   pressed: {
     opacity: 0.7,
