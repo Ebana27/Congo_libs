@@ -16,6 +16,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Le runner ubuntu-latest shippe ~12 Go d'outils dont on n'a pas besoin
+      # (dotnet, ghc, boost) : les supprimer evite que le build meure faute de
+      # place. On garde le SDK Android.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost
+          df -h /
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -38,7 +46,34 @@ jobs:
 
       - name: Build release APK
         working-directory: App/android
-        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --no-daemon --console=plain
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+            -Dorg.gradle.jvmargs=-Xmx4g \
+            --no-daemon --console=plain 2>&1 | tee ../gradle-release.log
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          echo "::group::Environnement"
+          java -version 2>&1 || true
+          node -v || true
+          nproc || true
+          free -h || true
+          df -h / /home/runner 2>/dev/null || df -h || true
+          echo "::endgroup::"
+          echo "::group::Dernieres lignes du build"
+          tail -n 120 App/gradle-release.log || echo "pas de log"
+          echo "::endgroup::"
+
+      - name: Upload gradle log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-release-log
+          path: App/gradle-release.log
+          if-no-files-found: ignore
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

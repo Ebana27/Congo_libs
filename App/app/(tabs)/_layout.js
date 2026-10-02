@@ -2,7 +2,7 @@ import { memo, useEffect, useState } from 'react';
 import { Tabs, router } from 'expo-router';
 import { BookOpen, Compass, Home, Plus, User, X } from 'lucide-react-native';
 import Header from '../../src/components/shared/Header';
-import ArcAddMenu, { TAB_BAR_HEIGHT, TAB_BAR_PADDING_TOP } from '../../src/components/shared/ArcAddMenu';
+import ArcAddMenu, { useTabBarMetrics } from '../../src/components/shared/ArcAddMenu';
 import { colors } from '../../src/constants/themes';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { loadToken } from '../../src/services/api/congolibsAPI';
@@ -26,6 +26,7 @@ const AddTabIcon = memo(({ open, color, size }) =>
 export default function TabsLayout() {
   const [checked, setChecked] = useState(false);
   const [arcOpen, setArcOpen] = useState(false);
+  const tabBar = useTabBarMetrics();
 
   useEffect(() => {
     let mounted = true;
@@ -60,10 +61,12 @@ export default function TabsLayout() {
           tabBarInactiveTintColor: colors.textSecondary,
           tabBarStyle: {
             backgroundColor: colors.surface,
-            height: TAB_BAR_HEIGHT,
-            paddingTop: TAB_BAR_PADDING_TOP,
-            borderColor: "transparent",
+            height: tabBar.height,
+            paddingTop: tabBar.paddingTop,
+            paddingBottom: tabBar.paddingBottom,
             elevation: 0,
+            borderTopWidth: 0.5,
+            borderTopColor: "#cdcdcd",
           },
           tabBarButton: (props) => (
             <Pressable
@@ -72,12 +75,25 @@ export default function TabsLayout() {
               style={[props.style, ({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })]}
             />
           ),
-          tabBarShowLabel: true, // Garder les textes globalement
+          tabBarShowLabel: true,
           tabBarLabelStyle: {
-            fontSize: 12,
-            fontFamily: 'Poppins-SemiBold',
+            // 5 onglets sur un petit ecran : 12px tronquait "Bibliotheque".
+            fontSize: 10.5,
+            fontFamily: 'Poppins-Medium',
+            marginTop: 2,
+            includeFontPadding: false,
           },
-          // Masque le texte sur Android/iOS si l'onglet n'est pas actif (option native de React Navigation)
+          tabBarIconStyle: {
+            marginTop: 0,
+            marginBottom: 0,
+          },
+          // Les marges internes par defaut (5px sur les cotes) etaient
+          // comptees dans la largeur de chaque onglet : "Bibliotheque" passait
+          // en ellipsis. La lib n'applique tabBarItemStyle qu'apres son style.
+          tabBarItemStyle: {
+            paddingHorizontal: 2,
+            paddingVertical: 4,
+          },
           tabBarHideOnKeyboard: true,
         }}
       >

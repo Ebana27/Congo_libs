@@ -16,14 +16,27 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { AlertCircle, Check, FileUp, MessageSquare, Share2 } from 'lucide-react-native';
 import { colors, fonts } from '../../constants/themes';
 
-export const TAB_BAR_HEIGHT = 90;
-export const TAB_BAR_PADDING_TOP = 10;
+export const TAB_BAR_BASE_HEIGHT = 60;
+export const TAB_BAR_PADDING_TOP = 6;
 
-const ARC_CENTER_FROM_BOTTOM = TAB_BAR_HEIGHT;
+// La tabbar doit rester au-dessus de la barre de navigation systeme (3 boutons
+// ou gestuelle) : sur Android, insets.bottom vaut ~48px. La hauteur fixe
+// d'avant laissait les libelles passer dessous.
+export function useTabBarMetrics() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 0);
+  return {
+    height: TAB_BAR_BASE_HEIGHT + bottomInset,
+    paddingTop: TAB_BAR_PADDING_TOP,
+    paddingBottom: bottomInset,
+    bottomInset,
+  };
+}
 
 const FEEDBACK_EMAIL = 'hello@congolibs.space';
 const SHARE_MESSAGE =
@@ -88,6 +101,7 @@ const SEGMENTS = [
 
 export default function ArcAddMenu({ open = false, onRequestClose }) {
   const { width: screenWidth } = useWindowDimensions();
+  const { height: tabBarHeight } = useTabBarMetrics();
   const [toast, setToast] = useState(null);
   const [pressed, setPressed] = useState(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -102,7 +116,8 @@ export default function ArcAddMenu({ open = false, onRequestClose }) {
   const scale = menuWidth / BOX_W;
   const menuHeight = menuWidth * (BOX_H / BOX_W);
   const centerY = menuHeight * (CY / BOX_H);
-  const menuBottom = ARC_CENTER_FROM_BOTTOM - (menuHeight - centerY);
+  // L'arc est centre sur le haut de la tabbar : il suit sa hauteur reelle.
+  const menuBottom = tabBarHeight - (menuHeight - centerY);
 
   useEffect(() => {
     const segmentAnimations = progress.map((value) =>
@@ -237,7 +252,7 @@ export default function ArcAddMenu({ open = false, onRequestClose }) {
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {open && (
         <Pressable
-          style={styles.backdrop}
+          style={[styles.backdrop, { bottom: tabBarHeight }]}
           onPress={() => onRequestClose?.()}
           accessibilityRole="button"
           accessibilityLabel="Fermer le menu"
@@ -404,7 +419,7 @@ export default function ArcAddMenu({ open = false, onRequestClose }) {
           style={[
             styles.toast,
             {
-              bottom: TAB_BAR_HEIGHT + 16,
+              bottom: tabBarHeight + 16,
               opacity: toastProgress,
               transform: [
                 {
@@ -438,7 +453,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    bottom: TAB_BAR_HEIGHT,
   },
   segmentSvg: {
     position: 'absolute',
