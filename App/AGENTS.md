@@ -74,16 +74,23 @@ npm run build:apk # APK release local (arm64-v8a + armeabi-v7a uniquement)
 
 ## Build APK release
 
-L'APK se compile avec **uniquement les deux ABIs utilisées** (ARM64 + ARMv7a) et R8 +
-`shrinkResources` actifs. Le sélectif d'ABI n'est **pas** porté par `abiFilters` de
-`app.json` (ignoré par le plugin sur ce SDK) : il passe par le flag Gradle
-`-PreactNativeArchitectures`, présent dans `npm run build:apk` et dans
-`.github/workflows/build-android-apk.yml`. Ne pas le retirer, sinon l'APK ré-embarque
-x86/x86_64 inutiles.
+L'APK est produit **par architecture** (arm64-v8a et armeabi-v7a), via le config
+plugin `plugins/withAbiSplits.js` qui injecte un bloc `splits { abi { … } }` dans
+`android/app/build.gradle`. Résultat : deux APK d'environ 30 Mo au lieu d'un seul
+de 52 Mo. Les ABIs réellement compilées viennent de `buildArchs`
+(`expo-build-properties`), qui écrit `reactNativeArchitectures` dans
+`gradle.properties`.
 
-Le premier build local télécharge le SDK Android, le NDK 27 et CMake (~1 Go) : prévoir
-de la place disque et du temps. Le build GitHub Actions fait la même chose sur les
-runners, ce qui est plus rapide que le local.
+Le chemin du chemin importe : `app.json` est la source de vérité, `npm run build:apk`
+et le workflow CI passent aussi `-PreactNativeArchitectures`. Les deux listes doivent
+rester identiques, sinon un APK sort vide. `abiFilters` n'a aucun effet sur ce SDK.
+
+R8 (`enableProguardInReleaseBuilds`) et `shrinkResources` sont actifs, mais ils ne
+réduisent **que** le Java/Kotlin : les `.so` précompilés de react-native et Hermes
+(8,6 + 2,4 Mo pour arm64-v8a) ne sont pas concernés. D'où l'intérêt des splits.
+
+Le premier build local télécharge le SDK Android, le NDK 27, CMake et les platforms
+(~4 Go). Le build GitHub Actions fait la même chose sur les runners.
 
 L'APK release est signé avec le **keystore de debug** (`signingConfig signingConfigs.debug`
 généré par `expo prebuild`) : il s'installe mais n'est pas publiable sur le Play Store.
