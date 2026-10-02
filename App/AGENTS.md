@@ -85,7 +85,8 @@ Le chemin du chemin importe : `app.json` est la source de vérité, `npm run bui
 et le workflow CI passent aussi `-PreactNativeArchitectures`. Les deux listes doivent
 rester identiques, sinon un APK sort vide. `abiFilters` n'a aucun effet sur ce SDK.
 
-R8 (`enableProguardInReleaseBuilds`) et `shrinkResources` sont actifs, mais ils ne
+R8 (`enableProguardInReleaseBuilds`, que le plugin écrit sous le nom
+`enableMinifyInReleaseBuilds`) et `shrinkResources` sont actifs, mais ils ne
 réduisent **que** le Java/Kotlin : les `.so` précompilés de react-native et Hermes
 (8,6 + 2,4 Mo pour arm64-v8a) ne sont pas concernés. D'où l'intérêt des splits.
 
