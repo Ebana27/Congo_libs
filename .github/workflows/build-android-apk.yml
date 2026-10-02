@@ -56,15 +56,25 @@ jobs:
       - name: Diagnostics on failure
         if: failure()
         run: |
-          echo "::group::Environnement"
-          java -version 2>&1 || true
-          node -v || true
-          nproc || true
-          free -h || true
-          df -h / /home/runner 2>/dev/null || df -h || true
-          echo "::endgroup::"
-          echo "::group::Dernieres lignes du build"
-          tail -n 120 App/gradle-release.log || echo "pas de log"
+          LOG=App/gradle-release.log
+          {
+            echo "## Echec du build APK"
+            echo ""
+            echo '```'
+            java -version 2>&1 || true
+            free -h || true
+            df -h / || true
+            echo '```'
+            echo ""
+            echo "### Erreur Gradle"
+            echo ""
+            echo '```'
+            grep -A 12 "What went wrong" "$LOG" || tail -n 80 "$LOG" || echo "pas de log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=Gradle::$(grep -m1 -A 6 'What went wrong' "$LOG" | tr '\n' ' ' || echo 'build interrompu')"
+          echo "::group::Dernieres lignes"
+          tail -n 80 "$LOG" || true
           echo "::endgroup::"
 
       - name: Upload gradle log
