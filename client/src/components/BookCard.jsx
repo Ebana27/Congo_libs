@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom'
 import {
   FiBookOpen,
   FiHeart,
-  FiStar,
   FiArrowRight,
 } from 'react-icons/fi'
 
@@ -62,16 +61,8 @@ function BookCard({ book }) {
         </p>
 
         <div className="book-meta">
-
-          <span className="book-rating">
-            <FiStar />
-            {book.rating}
-          </span>
-
-          <span>
-            {book.pages} pages
-          </span>
-
+          <span>{book.date ? new Date(book.date).toLocaleDateString('fr-FR') : 'Disponible en ligne'}</span>
+          <span>PDF</span>
         </div>
       </div>
     </article>

@@ -7,9 +7,10 @@ import {
   FiTrash2,
 } from 'react-icons/fi'
 
-import books from '../data/books'
+import { useLibrary } from '../context/LibraryContext'
 
 function Favorites() {
+  const { books } = useLibrary()
   const navigate = useNavigate()
 
   // Pour l'instant, quelques livres sont considérés

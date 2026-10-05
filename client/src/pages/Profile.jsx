@@ -10,10 +10,11 @@ import {
   FiUser,
 } from 'react-icons/fi'
 
-import books from '../data/books'
+import { useLibrary } from '../context/LibraryContext'
 import { useAuth } from '../context/AuthContext'
 
 function Profile() {
+  const { books } = useLibrary()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
 

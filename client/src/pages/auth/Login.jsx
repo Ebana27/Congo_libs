@@ -1,23 +1,31 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { FiArrowRight, FiBookOpen, FiEye, FiEyeOff, FiMail, FiLock } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
+import GoogleSignInButton from '../../components/GoogleSignInButton'
 
 function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login } = useAuth()
+  const { login, isAuthenticated } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (event) => {
+  useEffect(() => {
+    if (isAuthenticated) navigate('/', { replace: true })
+  }, [isAuthenticated, navigate])
+
+  const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
-    const result = login({ email, password })
+    setLoading(true)
+    const result = await login({ email, password })
     if (!result.ok) {
       setError(result.message)
+      setLoading(false)
       return
     }
     navigate(location.state?.from || '/', { replace: true })
@@ -40,12 +48,15 @@ function Login() {
           <p>Connectez-vous pour retrouver votre bibliothèque et continuer vos lectures.</p>
         </div>
 
+        <GoogleSignInButton mode="signin" />
+        <div className="auth-divider"><span>ou avec votre e-mail</span></div>
+
         <form className="auth-form" onSubmit={handleSubmit}>
           <label>
             <span>Adresse e-mail</span>
             <div className="auth-input">
               <FiMail />
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@exemple.com" required />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@exemple.com" autoComplete="email" required />
             </div>
           </label>
 
@@ -53,8 +64,8 @@ function Login() {
             <span>Mot de passe</span>
             <div className="auth-input">
               <FiLock />
-              <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Votre mot de passe" required />
-              <button type="button" className="auth-password-toggle" onClick={() => setShowPassword((value) => !value)} aria-label="Afficher le mot de passe">
+              <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Votre mot de passe" autoComplete="current-password" required />
+              <button type="button" className="auth-password-toggle" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}>
                 {showPassword ? <FiEyeOff /> : <FiEye />}
               </button>
             </div>
@@ -62,8 +73,8 @@ function Login() {
 
           {error && <div className="auth-error">{error}</div>}
 
-          <button className="auth-submit" type="submit">
-            Se connecter <FiArrowRight />
+          <button className="auth-submit" type="submit" disabled={loading}>
+            {loading ? 'Connexion...' : 'Se connecter'} {!loading && <FiArrowRight />}
           </button>
         </form>
 

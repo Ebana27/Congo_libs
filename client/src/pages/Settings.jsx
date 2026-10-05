@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useLanguage } from '../context/LanguageContext'
 import {
   FiArrowLeft,
   FiBell,
@@ -8,7 +9,6 @@ import {
   FiChevronRight,
   FiGlobe,
   FiLock,
-  FiMoon,
   FiSave,
   FiShield,
   FiUser,
@@ -18,10 +18,9 @@ function Settings() {
   const navigate = useNavigate()
 
   const [notifications, setNotifications] = useState(true)
-  const [darkMode, setDarkMode] = useState(true)
   const [privateAccount, setPrivateAccount] = useState(false)
 
-  const [language, setLanguage] = useState('Français')
+  const { language, setLanguage, languages } = useLanguage()
 
   const [saved, setSaved] = useState(false)
 
@@ -152,70 +151,6 @@ function Settings() {
       </section>
 
 
-      {/* APPEARANCE */}
-
-      <section className="settings-section">
-
-        <div className="settings-section-title">
-
-          <div className="settings-section-icon">
-            <FiMoon />
-          </div>
-
-          <div>
-            <span className="section-label">
-              APPARENCE
-            </span>
-
-            <h2>
-              Apparence
-            </h2>
-          </div>
-
-        </div>
-
-
-        <div className="settings-card">
-
-          <div className="settings-row">
-
-            <div className="settings-row-icon">
-              <FiMoon />
-            </div>
-
-            <div className="settings-row-content">
-
-              <strong>
-                Mode sombre
-              </strong>
-
-              <span>
-                Utiliser le thème sombre de CONGOLIBS
-              </span>
-
-            </div>
-
-            <button
-              className={
-                darkMode
-                  ? 'settings-toggle active'
-                  : 'settings-toggle'
-              }
-              onClick={() =>
-                setDarkMode(!darkMode)
-              }
-              aria-label="Activer ou désactiver le mode sombre"
-            >
-              <span />
-            </button>
-
-          </div>
-
-        </div>
-
-      </section>
-
-
       {/* NOTIFICATIONS */}
 
       <section className="settings-section">
@@ -325,21 +260,13 @@ function Settings() {
 
             <select
               value={language}
-              onChange={(event) =>
-                setLanguage(event.target.value)
-              }
+              onChange={(event) => setLanguage(event.target.value)}
             >
-              <option>
-                Français
-              </option>
-
-              <option>
-                English
-              </option>
-
-              <option>
-                Lingala
-              </option>
+              {languages.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
             </select>
 
           </div>

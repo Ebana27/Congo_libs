@@ -30,6 +30,7 @@ function AppLayout() {
 
         <main className="app-main">
           <Outlet />
+          
         </main>
 
         <nav className="mobile-bottom-nav" aria-label="Navigation principale">
