@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getApiErrorMessage, readApiResponse } from './adminApi'
 
-const API_URL = 'http://localhost:8000/api/v1/admin'
+const API_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/admin`
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState(null)
@@ -21,8 +21,7 @@ export default function AdminDashboardPage() {
           return
         }
 
-        const data = await readApiResponse(response)
-        setStats(data)
+        setStats(await readApiResponse(response))
       } catch (err) {
         setError(getApiErrorMessage(err))
       } finally {
@@ -33,74 +32,70 @@ export default function AdminDashboardPage() {
     load()
   }, [])
 
-  if (loading) {
-    return <div className="min-h-screen bg-slate-100 p-8 text-slate-700">Chargement du dashboard…</div>
-  }
-
+  if (loading) return <main className="cg-admin cg-admin-page"><div className="cg-admin-shell"><p className="cg-status-message" role="status">Chargement du tableau de bord…</p></div></main>
   if (error || !stats) {
-    return <div className="min-h-screen bg-slate-100 p-8 text-red-700">{error || 'Les données du dashboard sont indisponibles.'}</div>
+    return <main className="cg-admin cg-admin-page"><div className="cg-admin-shell"><div className="cg-admin-message cg-error-state"><p role="alert">{error || 'Les données du tableau de bord sont indisponibles.'}</p></div></div></main>
   }
 
   const cards = [
     { label: 'Documents', value: stats.documents_total },
     { label: 'Utilisateurs', value: stats.users_total },
-    { label: 'Téléchargements', value: stats.downloads_today },
+    { label: 'Téléchargements aujourd’hui', value: stats.downloads_today },
   ]
+  const documentsByType = Array.isArray(stats.documents_by_type) ? stats.documents_by_type : []
+  const recentDownloads = Array.isArray(stats.recent_downloads) ? stats.recent_downloads : []
+  const documentTotal = Number(stats.documents_total) || 0
 
   return (
-    <div className="min-h-screen bg-slate-100 p-8 text-slate-900">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Dashboard</p>
-            <h1 className="mt-2 text-3xl font-bold">Vue d’ensemble</h1>
-          </div>
-          <a href="/admin/users" className="rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700">Voir les utilisateurs</a>
+    <main className="cg-admin cg-admin-page">
+      <div className="cg-admin-shell cg-admin-content">
+        <header className="cg-admin-heading">
+          <div><p className="cg-eyebrow">Administration</p><h1>Vue d’ensemble</h1></div>
+          <a className="cg-button cg-primary-button" href="/admin/users">Voir les utilisateurs</a>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="cg-admin-metrics" aria-label="Indicateurs">
           {cards.map((card) => (
-            <div key={card.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-              <p className="text-sm text-slate-500">{card.label}</p>
-              <p className="mt-3 text-3xl font-bold text-slate-900">{card.value}</p>
-            </div>
+            <article className="cg-admin-metric cg-admin-surface" key={card.label}>
+              <h2>{card.label}</h2>
+              <p>{card.value}</p>
+            </article>
           ))}
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-            <h2 className="mb-4 text-lg font-semibold">Répartition par type</h2>
-            <div className="space-y-3">
-              {stats.documents_by_type.map((row) => (
-                <div key={row.type}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span className="capitalize text-slate-600">{row.type}</span>
-                    <span className="font-medium text-slate-900">{row.total}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-slate-100">
-                    <div className="h-2 rounded-full bg-accent" style={{ width: `${Math.min(100, (row.total / Math.max(stats.documents_total, 1)) * 100)}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="cg-admin-panels">
+          <section className="cg-admin-panel cg-admin-surface" aria-labelledby="admin-documents-heading">
+            <h2 id="admin-documents-heading">Répartition par type</h2>
+            {documentsByType.length ? (
+              <ul className="cg-admin-type-list">
+                {documentsByType.map((row) => {
+                  const percentage = Math.min(100, (Number(row.total) / Math.max(documentTotal, 1)) * 100)
+                  return (
+                    <li className="cg-admin-type-row" key={row.type}>
+                      <div><span>{row.type}</span><strong>{row.total}</strong></div>
+                      <div className="cg-admin-meter" role="presentation"><span style={{ width: `${percentage}%` }} /></div>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : <p className="cg-empty-state">Aucun document à répartir.</p>}
+          </section>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-soft">
-            <h2 className="mb-4 text-lg font-semibold">Téléchargements récents</h2>
-            <div className="space-y-3">
-              {stats.recent_downloads.map((item) => (
-                <div key={item.id} className="flex items-center justify-between border-b border-slate-100 pb-2 last:border-none last:pb-0">
-                  <div>
-                    <p className="font-medium text-slate-900">{item.document}</p>
-                    <p className="text-xs text-slate-500">{item.user} · {item.type}</p>
-                  </div>
-                  <span className="text-xs text-slate-500">{new Date(item.date).toLocaleDateString()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+          <section className="cg-admin-panel cg-admin-surface" aria-labelledby="admin-downloads-heading">
+            <h2 id="admin-downloads-heading">Téléchargements récents</h2>
+            {recentDownloads.length ? (
+              <ul className="cg-admin-download-list">
+                {recentDownloads.map((item) => (
+                  <li className="cg-admin-download" key={item.id}>
+                    <div><strong>{item.document}</strong><span>{item.user} · {item.type}</span></div>
+                    <time dateTime={item.date}>{new Date(item.date).toLocaleDateString()}</time>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="cg-empty-state">Aucun téléchargement récent.</p>}
+          </section>
+        </div>
       </div>
-    </div>
+    </main>
   )
 }

@@ -14,6 +14,7 @@ import BookDetails from './pages/BookDetails'
 import Reader from './pages/Reader'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
+import GoogleCallback from './pages/auth/GoogleCallback'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminLoginPage from './admin/AdminLoginPage'
 import AdminDashboardPage from './admin/AdminDashboardPage'
@@ -24,6 +25,7 @@ function App() {
     <Routes>
       <Route path="/connexion" element={<Login />} />
       <Route path="/inscription" element={<Register />} />
+      <Route path="/auth/google/callback" element={<GoogleCallback />} />
       <Route path="/admin" element={<AdminLoginPage />} />
       <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
       <Route path="/admin/users" element={<AdminUsersPage />} />
@@ -36,6 +38,7 @@ function App() {
         }
       >
         <Route path="/" element={<Home />} />
+        <Route path="/home" element={<Home />} />
         <Route path="/explore" element={<Explore />} />
         <Route path="/library" element={<Library />} />
         <Route path="/profile" element={<Profile />} />

@@ -1,24 +1,25 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
-  FiBell,
   FiBookOpen,
   FiMenu,
   FiSearch,
   FiUser,
 } from 'react-icons/fi'
 
-function Navbar({ onMenuClick }) {
+function Navbar({ isSidebarOpen, onMenuClick }) {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
 
   return (
-    <header className="navbar">
+    <header className="navbar cg-topbar">
       <div className="navbar-left">
         <button
           className="menu-button"
           onClick={onMenuClick}
           aria-label="Ouvrir le menu"
+          aria-expanded={isSidebarOpen}
+          aria-controls="primary-sidebar"
         >
           <FiMenu />
         </button>
@@ -26,6 +27,7 @@ function Navbar({ onMenuClick }) {
         <button
           className="mobile-logo"
           onClick={() => navigate('/')}
+          aria-label="Congolibs, accueil"
         >
           <span className="mobile-logo-icon">
             <FiBookOpen />
@@ -37,9 +39,10 @@ function Navbar({ onMenuClick }) {
       <button
         className="navbar-search"
         onClick={() => navigate('/recherche')}
+        aria-label="Rechercher dans la bibliothèque"
       >
         <FiSearch />
-        <span>Rechercher un livre, un auteur...</span>
+        <span>Rechercher un livre, un auteur ou une matière</span>
       </button>
 
       <div className="navbar-actions">
@@ -52,16 +55,9 @@ function Navbar({ onMenuClick }) {
         </button>
 
         <button
-          className="navbar-icon-button"
-          aria-label="Notifications"
-        >
-          <FiBell />
-          <span className="notification-dot" />
-        </button>
-
-        <button
           className="profile-button"
           onClick={() => navigate('/profile')}
+          aria-label="Ouvrir mon profil"
         >
           <span className="profile-avatar">
             <FiUser />
@@ -72,7 +68,6 @@ function Navbar({ onMenuClick }) {
         <button
           className="navbar-logout"
           onClick={logout}
-          aria-label="Se déconnecter"
         >
           Déconnexion
         </button>

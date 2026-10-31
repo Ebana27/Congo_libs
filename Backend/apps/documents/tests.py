@@ -36,21 +36,10 @@ class DocumentApiTests(APITestCase):
 		self.assertNotIn("lien_telechargement", list_response.data[0])
 		self.assertNotIn("lien_telechargement", detail_response.data)
 
-	def test_download_endpoint_streams_pdf_without_exposing_drive_id(self):
+	def test_legacy_download_endpoint_is_not_exposed(self):
 		document = self.create_document()
-		document.lien_telechargement = "drive-file-123"
-		document.save(update_fields=["lien_telechargement"])
-		url = reverse("document-download", kwargs={"pk": document.pk})
-
-		with patch("apps.documents.api.api.get_google_drive_file_bytes", return_value=b"%PDF-1.4\nstreamed-bytes") as mocked:
-			response = self.client.post(url)
-
-		self.assertEqual(response.status_code, status.HTTP_200_OK)
-		self.assertEqual(response["Content-Type"], "application/pdf")
-		self.assertIn("attachment; filename=", response["Content-Disposition"])
-		self.assertEqual(list(response.streaming_content), [b"%PDF-1.4\nstreamed-bytes"])
-		self.assertNotIn("drive-file-123", response["Content-Disposition"])
-		mocked.assert_called_once_with("drive-file-123")
+		response = self.client.post(f"/api/v1/documents/{document.pk}/telecharger/")
+		self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 	def test_document_crud_and_soft_delete(self):
 		document = self.create_document()

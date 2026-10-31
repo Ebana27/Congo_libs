@@ -9,11 +9,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
+from django.core.exceptions import ImproperlyConfigured
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get(
-    "SECRET_KEY",
-   
-)
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        "SECRET_KEY is required. Set it in the environment or .env before starting Django."
+    )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
@@ -27,9 +30,13 @@ ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS if host.strip()]
 SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "0"))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get("SECURE_HSTS_INCLUDE_SUBDOMAINS", "False").lower() == "true"
 SECURE_HSTS_PRELOAD = os.environ.get("SECURE_HSTS_PRELOAD", "False").lower() == "true"
-SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "False").lower() == "true"
-SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "False").lower() == "true"
-CSRF_COOKIE_SECURE = os.environ.get("CSRF_COOKIE_SECURE", "False").lower() == "true"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
+SECURE_CROSS_ORIGIN_RESOURCE_POLICY = "same-origin"
+SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", str(not DEBUG)).lower() == "true"
+SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", str(not DEBUG)).lower() == "true"
+CSRF_COOKIE_SECURE = os.environ.get("CSRF_COOKIE_SECURE", str(not DEBUG)).lower() == "true"
 SECURE_PROXY_SSL_HEADER = tuple(
     os.environ.get("SECURE_PROXY_SSL_HEADER", "HTTP_X_FORWARDED_PROTO,https").split(",")
 )
@@ -102,6 +109,11 @@ ACCOUNT_EMAIL_VERIFICATION = "none"
 ACCOUNT_LOGIN_METHODS = {"email", "username"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 ACCOUNT_UNIQUE_EMAIL = True
+GOOGLE_CALLBACK_URL = os.environ.get(
+    "GOOGLE_CALLBACK_URL",
+    "http://localhost:3000/auth/google/callback",
+)
+
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "APP": {
@@ -224,9 +236,20 @@ REST_FRAMEWORK = {
         "user": "1000/day",
         "login": "10/min",
         "mobile_login": "10/min",
+        "drm_pages": "120/min",
+        "drm_device_register": "10/hour",
+        "drm_license": "10/hour",
+        "drm_download": "20/hour",
+        "drm_license_renew": "10/hour",
+        "drm_screenshot_event": "10/hour",
     },
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
+DRM_MASTER_KEY = os.environ.get("DRM_MASTER_KEY", "")
+DRM_MAX_DEVICES = int(os.environ.get("DRM_MAX_DEVICES", "2"))
+DRM_LICENSE_DAYS = int(os.environ.get("DRM_LICENSE_DAYS", "7"))
+DRM_MAX_OFFLINE_LICENSES = int(os.environ.get("DRM_MAX_OFFLINE_LICENSES", "10"))
+DRM_MAX_PDF_SIZE = int(os.environ.get("DRM_MAX_PDF_SIZE", str(50 * 1024 * 1024)))
 SPECTACULAR_SETTINGS = {
     "TITLE": "Congo Libs API",
     "DESCRIPTION": "API de gestion des documents, détails et authentification Google.",
@@ -252,9 +275,8 @@ EMAIL_HOST = os.environ.get(
     "BREVO_SMTP_HOST",
     os.environ.get("EMAIL_HOST", "mail.congolibs.space"),
 )
-EMAIL_PORT = int(os.environ.get("BREVO_SMTP_PORT"))
-EMAIL_USE_TLS = os.environ.get("BREVO_SMTP_USE_TLS").lower() == "true"
-EMAIL_HOST_USER = os.environ.get( "BREVO_SMTP_LOGIN")
-EMAIL_HOST_PASSWORD = os.environ.get("BREVO_SMTP_KEY")
-DEFAULT_FROM_EMAIL = os.environ.get(
-    "BREVO_DEFAULT_FROM_EMAIL")
+EMAIL_PORT = int(os.environ.get("BREVO_SMTP_PORT", "587"))
+EMAIL_USE_TLS = os.environ.get("BREVO_SMTP_USE_TLS", "False").lower() == "true"
+EMAIL_HOST_USER = os.environ.get("BREVO_SMTP_LOGIN", "")
+EMAIL_HOST_PASSWORD = os.environ.get("BREVO_SMTP_KEY", "")
+DEFAULT_FROM_EMAIL = os.environ.get("BREVO_DEFAULT_FROM_EMAIL", "noreply@example.com")

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getApiErrorMessage, readApiResponse } from './adminApi'
 
-const API_URL = 'http://localhost:8000/api/v1/admin'
+const API_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1/admin`
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([])
@@ -18,7 +18,7 @@ export default function AdminUsersPage() {
         }
 
         const data = await readApiResponse(response)
-        setUsers(data.results || [])
+        setUsers(Array.isArray(data.results) ? data.results : [])
       } catch (err) {
         setError(getApiErrorMessage(err))
       } finally {
@@ -29,45 +29,42 @@ export default function AdminUsersPage() {
     load()
   }, [])
 
-  if (loading) return <div className="min-h-screen bg-slate-100 p-8">Chargement…</div>
-  if (error) return <div className="min-h-screen bg-slate-100 p-8 text-red-700">{error}</div>
+  if (loading) return <main className="cg-admin cg-admin-page"><div className="cg-admin-shell"><p className="cg-status-message" role="status">Chargement des utilisateurs…</p></div></main>
+  if (error) return <main className="cg-admin cg-admin-page"><div className="cg-admin-shell"><div className="cg-admin-message cg-error-state"><p role="alert">{error}</p></div></div></main>
 
   return (
-    <div className="min-h-screen bg-slate-100 p-8 text-slate-900">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Administration</p>
-            <h1 className="mt-2 text-3xl font-bold">Utilisateurs</h1>
-          </div>
-          <a href="/admin/dashboard" className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Retour dashboard</a>
+    <main className="cg-admin cg-admin-page">
+      <div className="cg-admin-shell cg-admin-content">
+        <header className="cg-admin-heading">
+          <div><p className="cg-eyebrow">Administration</p><h1>Utilisateurs</h1></div>
+          <a className="cg-button cg-secondary-button" href="/admin/dashboard">Retour au tableau de bord</a>
         </header>
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Nom</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Rôle</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Inscription</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-900">{user.username}</td>
-                  <td className="px-4 py-3 text-slate-600">{user.email}</td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">{user.role}</span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{new Date(user.date_joined).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {users.length ? (
+          <div className="cg-admin-table-wrap cg-admin-surface">
+            <table className="cg-admin-table">
+              <thead>
+                <tr><th scope="col">Nom</th><th scope="col">Adresse e-mail</th><th scope="col">Rôle</th><th scope="col">Inscription</th></tr>
+              </thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id}>
+                    <td>{user.username}</td>
+                    <td>{user.email}</td>
+                    <td><span className="cg-admin-role">{user.role}</span></td>
+                    <td>{user.date_joined ? new Date(user.date_joined).toLocaleDateString() : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <section className="cg-empty-state" role="status">
+            <h2>Aucun utilisateur à afficher</h2>
+            <p>La liste ne contient aucun résultat.</p>
+          </section>
+        )}
       </div>
-    </div>
+    </main>
   )
 }

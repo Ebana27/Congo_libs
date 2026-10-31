@@ -1,6 +1,6 @@
 from django.urls import include, path
 
-from apps.documents.api.api import LoginView, LogoutView, SessionView
+from apps.documents.api.api import CsrfTokenView, LoginView, LogoutView, SessionView
 from apps.users.views.mobile import (
     MobileCurrentUserView,
     MobileLoginView,
@@ -14,6 +14,7 @@ urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),
     path("session/", SessionView.as_view(), name="session"),
+    path("csrf/", CsrfTokenView.as_view(), name="csrf"),
     path("auth/google/", GoogleLoginView.as_view(), name="google_login"),
 
     # Endpoints mobile token-only. On les place avant le bloc dj-rest-auth pour

@@ -1,326 +1,84 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import {
-  FiBookOpen,
-  FiHeart,
-  FiSearch,
-  FiStar,
-  FiGrid,
-  FiList,
-} from 'react-icons/fi'
-
+import { Link, useNavigate } from 'react-router-dom'
+import { FiBookOpen, FiGrid, FiList, FiSearch, FiStar } from 'react-icons/fi'
 import books from '../data/books'
 
 function Bibliotheque() {
   const navigate = useNavigate()
-
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('Tous')
   const [view, setView] = useState('grid')
-
-  const categories = [
-    'Tous',
-    ...new Set(
-      books.map((book) => book.category)
-    ),
-  ]
+  const categories = ['Tous', ...new Set(books.map((book) => book.category))]
 
   const filteredBooks = useMemo(() => {
     const query = search.trim().toLowerCase()
-
     return books.filter((book) => {
-      const matchesSearch =
-        !query ||
-        book.title.toLowerCase().includes(query) ||
-        book.author.toLowerCase().includes(query)
-
-      const matchesCategory =
-        category === 'Tous' ||
-        book.category === category
-
-      return matchesSearch && matchesCategory
+      const matchesSearch = !query || `${book.title} ${book.author}`.toLowerCase().includes(query)
+      return matchesSearch && (category === 'Tous' || book.category === category)
     })
   }, [search, category])
 
   return (
-    <div className="bibliotheque-page">
-
-      {/* HEADER */}
-
-      <section className="bibliotheque-header">
-
+    <main className="cg-page cg-personal-library">
+      <header className="cg-page-heading cg-page-header">
         <div>
-          <span className="section-label">
-            MA COLLECTION
-          </span>
-
-          <h1>
-            Bibliothèque
-          </h1>
-
-          <p>
-            Retrouvez tous les livres disponibles
-            dans votre espace de lecture.
-          </p>
+          <p className="cg-eyebrow">Congolibs · Ma collection</p>
+          <h1>Bibliothèque</h1>
+          <p>Retrouvez les livres disponibles dans la bibliothèque numérique.</p>
         </div>
+        <span className="cg-result-count">{filteredBooks.length} {filteredBooks.length > 1 ? 'livres' : 'livre'}</span>
+      </header>
 
-        <div className="bibliotheque-count">
-
-          <strong>
-            {filteredBooks.length}
-          </strong>
-
-          <span>
-            {filteredBooks.length > 1
-              ? 'livres'
-              : 'livre'}
-          </span>
-
+      <section className="cg-library-tools" aria-label="Recherche et affichage">
+        <label className="cg-search-field">
+          <FiSearch aria-hidden="true" />
+          <span className="cg-visually-hidden">Rechercher un livre ou un auteur</span>
+          <input className="cg-input" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher un livre ou un auteur" />
+        </label>
+        <div className="cg-view-switch" aria-label="Mode d’affichage">
+          <button type="button" className={view === 'grid' ? 'cg-icon-button cg-view-selected' : 'cg-icon-button'} aria-pressed={view === 'grid'} aria-label="Affichage en grille" onClick={() => setView('grid')}><FiGrid /></button>
+          <button type="button" className={view === 'list' ? 'cg-icon-button cg-view-selected' : 'cg-icon-button'} aria-pressed={view === 'list'} aria-label="Affichage en liste" onClick={() => setView('list')}><FiList /></button>
         </div>
-
       </section>
 
-
-      {/* SEARCH + VIEW */}
-
-      <section className="bibliotheque-toolbar">
-
-        <div className="bibliotheque-search">
-
-          <FiSearch />
-
-          <input
-            type="text"
-            placeholder="Rechercher un livre ou un auteur..."
-            value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
-          />
-
-        </div>
-
-
-        <div className="bibliotheque-view">
-
-          <button
-            className={
-              view === 'grid'
-                ? 'active'
-                : ''
-            }
-            onClick={() => setView('grid')}
-            aria-label="Vue grille"
-          >
-            <FiGrid />
-          </button>
-
-          <button
-            className={
-              view === 'list'
-                ? 'active'
-                : ''
-            }
-            onClick={() => setView('list')}
-            aria-label="Vue liste"
-          >
-            <FiList />
-          </button>
-
-        </div>
-
-      </section>
-
-
-      {/* FILTERS */}
-
-      <section className="bibliotheque-filters">
-
+      <nav className="cg-filter-list" aria-label="Filtrer par catégorie">
         {categories.map((item) => (
-
-          <button
-            key={item}
-            className={
-              category === item
-                ? 'active'
-                : ''
-            }
-            onClick={() => setCategory(item)}
-          >
-            {item}
-          </button>
-
+          <button type="button" key={item} className="cg-filter cg-filter-chip" aria-pressed={category === item} onClick={() => setCategory(item)}>{item}</button>
         ))}
+      </nav>
 
-      </section>
-
-
-      {/* BOOKS */}
-
-      {filteredBooks.length > 0 ? (
-
-        view === 'grid' ? (
-
-          <div className="bibliotheque-grid">
-
-            {filteredBooks.map((book) => (
-
-              <article
-                className="bibliotheque-card"
-                key={book.id}
-                onClick={() =>
-                  navigate(`/livre/${book.id}`)
-                }
-              >
-
-                <div className="bibliotheque-cover">
-
-                  <FiBookOpen />
-
-                  <button
-                    className="bibliotheque-favorite"
-                    onClick={(event) => {
-                      event.stopPropagation()
-                    }}
-                    aria-label="Ajouter aux favoris"
-                  >
-                    <FiHeart />
-                  </button>
-
-                  <span>
-                    {book.category}
+      {filteredBooks.length ? (
+        <section className={view === 'grid' ? 'cg-book-grid' : 'cg-book-list'} aria-label="Livres">
+          {filteredBooks.map((book) => (
+            <Link className={view === 'grid' ? 'cg-book-card cg-book-card-link' : 'cg-book-list-card cg-book-card-link'} key={book.id} to={`/livre/${book.id}`}>
+              <span className="cg-book-cover">
+                {book.cover ? <img src={book.cover} alt="" /> : (
+                  <span className="cg-book-cover-placeholder">
+                    <span className="cg-book-cover-mark"><FiBookOpen aria-hidden="true" /></span>
+                    <span className="cg-book-cover-category">{book.category}</span>
+                    <strong>{book.title}</strong>
+                    <span className="cg-book-cover-author">{book.author}</span>
                   </span>
-
-                </div>
-
-
-                <div className="bibliotheque-info">
-
-                  <h2>
-                    {book.title}
-                  </h2>
-
-                  <p>
-                    {book.author}
-                  </p>
-
-                  <div className="bibliotheque-meta">
-
-                    <span>
-                      <FiStar />
-                      {book.rating}
-                    </span>
-
-                    <span>
-                      {book.pages} pages
-                    </span>
-
-                  </div>
-
-                </div>
-
-              </article>
-
-            ))}
-
-          </div>
-
-        ) : (
-
-          <div className="bibliotheque-list">
-
-            {filteredBooks.map((book) => (
-
-              <article
-                className="bibliotheque-list-card"
-                key={book.id}
-                onClick={() =>
-                  navigate(`/livre/${book.id}`)
-                }
-              >
-
-                <div className="bibliotheque-list-cover">
-                  <FiBookOpen />
-                </div>
-
-                <div className="bibliotheque-list-info">
-
-                  <span className="bibliotheque-list-category">
-                    {book.category}
-                  </span>
-
-                  <h2>
-                    {book.title}
-                  </h2>
-
-                  <p>
-                    {book.author}
-                  </p>
-
-                  <div className="bibliotheque-meta">
-
-                    <span>
-                      <FiStar />
-                      {book.rating}
-                    </span>
-
-                    <span>
-                      {book.pages} pages
-                    </span>
-
-                  </div>
-
-                </div>
-
-                <button
-                  className="bibliotheque-list-favorite"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                  }}
-                  aria-label="Ajouter aux favoris"
-                >
-                  <FiHeart />
-                </button>
-
-              </article>
-
-            ))}
-
-          </div>
-
-        )
-
+                )}
+              </span>
+              <div className="cg-book-info">
+                <span className="cg-book-category">{book.category}</span>
+                <h3>{book.title}</h3>
+                <p>{book.author}</p>
+                <span className="cg-book-meta"><FiStar aria-hidden="true" /> {book.rating}/5 · {book.pages} pages</span>
+              </div>
+            </Link>
+          ))}
+        </section>
       ) : (
-
-        <div className="bibliotheque-empty">
-
-          <div className="bibliotheque-empty-icon">
-            <FiSearch />
-          </div>
-
-          <h2>
-            Aucun livre trouvé
-          </h2>
-
-          <p>
-            Aucun résultat ne correspond à votre
-            recherche.
-          </p>
-
-          <button
-            onClick={() => {
-              setSearch('')
-              setCategory('Tous')
-            }}
-          >
-            Réinitialiser les filtres
-          </button>
-
+        <div className="cg-empty-state" role="status">
+          <FiSearch aria-hidden="true" />
+          <h2>Aucun livre trouvé</h2>
+          <p>Aucun résultat ne correspond à votre recherche.</p>
+          <button className="cg-button cg-button-secondary cg-secondary-button" onClick={() => { setSearch(''); setCategory('Tous') }}>Réinitialiser les filtres</button>
         </div>
-
       )}
-
-    </div>
+    </main>
   )
 }
 

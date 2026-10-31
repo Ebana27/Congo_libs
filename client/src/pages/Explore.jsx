@@ -1,267 +1,84 @@
-import { useNavigate } from 'react-router-dom'
-import {
-  FiArrowRight,
-  FiBookOpen,
-  FiHeart,
-  FiSearch,
-  FiStar,
-  FiTrendingUp,
-} from 'react-icons/fi'
-
+import { Link, useNavigate } from 'react-router-dom'
+import { FiArrowRight, FiBookOpen, FiSearch } from 'react-icons/fi'
 import books from '../data/books'
 
 function Explore() {
   const navigate = useNavigate()
-
-  const popularBooks = books.slice(0, 6)
-
-  const categories = [
-    {
-      name: 'Romans',
-      description: 'Découvrez les grands récits.',
-      icon: 'R',
-    },
-    {
-      name: 'Poésie',
-      description: 'Explorez les mots et les émotions.',
-      icon: 'P',
-    },
-    {
-      name: 'Histoire',
-      description: 'Plongez dans notre patrimoine.',
-      icon: 'H',
-    },
-    {
-      name: 'Culture',
-      description: 'Découvrez la richesse congolaise.',
-      icon: 'C',
-    },
-  ]
+  const categories = [...new Set(books.map((book) => book.category))]
 
   return (
-    <div className="explore-page">
-
-      {/* HEADER */}
-
-      <section className="explore-header">
-
+    <main className="cg-page cg-explore">
+      <header className="cg-page-heading cg-page-header cg-explore-heading">
         <div>
-          <span className="section-label">
-            CONGOLIBS
-          </span>
-
-          <h1>
-            Explorez notre bibliothèque
-          </h1>
-
-          <p>
-            Découvrez des œuvres, des auteurs et des
-            histoires qui font vivre notre culture.
-          </p>
+          <p className="cg-eyebrow">Congolibs · Explorer</p>
+          <h1>Une bibliothèque de récits et de savoirs.</h1>
+          <p>Découvrez les œuvres et les auteurs de la collection.</p>
         </div>
-
-        <button
-          className="explore-search-button"
-          onClick={() => navigate('/recherche')}
-        >
-          <FiSearch />
-          Rechercher
+        <button className="cg-button cg-button-secondary cg-secondary-button" onClick={() => navigate('/recherche')}>
+          <FiSearch aria-hidden="true" /> Rechercher
         </button>
+      </header>
 
+      <section className="cg-section" aria-labelledby="explore-categories">
+        <div className="cg-section-heading">
+          <div>
+            <p className="cg-eyebrow">Parcours de lecture</p>
+            <h2 id="explore-categories">Explorer par catégorie</h2>
+          </div>
+        </div>
+        <div className="cg-category-list">
+          {categories.map((category) => {
+            const count = books.filter((book) => book.category === category).length
+            return (
+              <button className="cg-category-card" key={category} onClick={() => navigate('/bibliotheque')}>
+                <span><strong>{category}</strong><small>{count} {count > 1 ? 'livres' : 'livre'}</small></span>
+                <FiArrowRight aria-hidden="true" />
+              </button>
+            )
+          })}
+        </div>
       </section>
 
-
-      {/* CATEGORIES */}
-
-      <section className="explore-section">
-
-        <div className="explore-section-header">
-
+      <section className="cg-section" aria-labelledby="explore-collection">
+        <div className="cg-section-heading">
           <div>
-            <span className="section-label">
-              DÉCOUVRIR
-            </span>
-
-            <h2>
-              Explorer par catégorie
-            </h2>
+            <p className="cg-eyebrow">La collection</p>
+            <h2 id="explore-collection">Livres à découvrir</h2>
           </div>
-
-          <button
-            className="explore-link"
-            onClick={() => navigate('/bibliotheque')}
-          >
-            Voir tout
-            <FiArrowRight />
+          <button className="cg-text-button cg-text-link" onClick={() => navigate('/bibliotheque')}>
+            Tous les livres <FiArrowRight aria-hidden="true" />
           </button>
-
         </div>
-
-
-        <div className="explore-categories">
-
-          {categories.map((category) => (
-
-            <button
-              className="explore-category-card"
-              key={category.name}
-              onClick={() => navigate('/bibliotheque')}
-            >
-
-              <div className="explore-category-icon">
-                {category.icon}
-              </div>
-
-              <div>
-                <h3>
-                  {category.name}
-                </h3>
-
-                <p>
-                  {category.description}
-                </p>
-              </div>
-
-              <FiArrowRight className="category-arrow" />
-
-            </button>
-
-          ))}
-
-        </div>
-
-      </section>
-
-
-      {/* POPULAR BOOKS */}
-
-      <section className="explore-section">
-
-        <div className="explore-section-header">
-
-          <div>
-            <span className="section-label">
-              TENDANCES
-            </span>
-
-            <h2>
-              Livres populaires
-            </h2>
-          </div>
-
-          <button
-            className="explore-link"
-            onClick={() => navigate('/bibliotheque')}
-          >
-            Tous les livres
-            <FiArrowRight />
-          </button>
-
-        </div>
-
-
-        <div className="explore-books-grid">
-
-          {popularBooks.map((book) => (
-
-            <article
-              className="explore-book-card"
-              key={book.id}
-              onClick={() =>
-                navigate(`/livre/${book.id}`)
-              }
-            >
-
-              <div className="explore-book-cover">
-
-                <FiBookOpen />
-
-                <button
-                  className="explore-favorite"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                  }}
-                  aria-label="Ajouter aux favoris"
-                >
-                  <FiHeart />
-                </button>
-
-                <span>
-                  {book.category}
+        {books.length ? (
+          <div className="cg-book-grid">
+            {books.slice(0, 6).map((book) => (
+              <Link className="cg-book-card cg-book-card-link" key={book.id} to={`/livre/${book.id}`}>
+                <span className="cg-book-cover">
+                  {book.cover
+                    ? <img src={book.cover} alt="" />
+                  : (
+                    <span className="cg-book-cover-placeholder">
+                      <span className="cg-book-cover-mark"><FiBookOpen aria-hidden="true" /></span>
+                      <span className="cg-book-cover-category">{book.category}</span>
+                      <strong>{book.title}</strong>
+                      <span className="cg-book-cover-author">{book.author}</span>
+                    </span>
+                  )}
                 </span>
-
+              <div className="cg-book-info">
+                <span className="cg-book-category">{book.category}</span>
+                <h3>{book.title}</h3>
+                <p>{book.author}</p>
+                <span className="cg-book-meta">{book.pages} pages · Note {book.rating}/5</span>
               </div>
-
-
-              <div className="explore-book-info">
-
-                <h3>
-                  {book.title}
-                </h3>
-
-                <p>
-                  {book.author}
-                </p>
-
-                <div className="explore-book-meta">
-
-                  <span>
-                    <FiStar />
-                    {book.rating}
-                  </span>
-
-                  <span>
-                    {book.pages} pages
-                  </span>
-
-                </div>
-
-              </div>
-
-            </article>
-
-          ))}
-
-        </div>
-
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="cg-empty-state">Aucun livre n’est disponible pour le moment.</p>
+        )}
       </section>
-
-
-      {/* DISCOVERY BANNER */}
-
-      <section className="explore-banner">
-
-        <div className="explore-banner-icon">
-          <FiTrendingUp />
-        </div>
-
-        <div className="explore-banner-content">
-
-          <span className="section-label">
-            À DÉCOUVRIR
-          </span>
-
-          <h2>
-            Une bibliothèque qui raconte notre histoire.
-          </h2>
-
-          <p>
-            Explorez les œuvres d'auteurs congolais et
-            découvrez de nouvelles lectures.
-          </p>
-
-        </div>
-
-        <button
-          onClick={() => navigate('/bibliotheque')}
-        >
-          Explorer
-          <FiArrowRight />
-        </button>
-
-      </section>
-
-    </div>
+    </main>
   )
 }
 

@@ -1,15 +1,172 @@
-Ajoute la connexion Google (inscription et connexion) au projet Django REST Framework existant, en t'appuyant sur django-allauth et dj-rest-auth. N'invente aucune nouvelle app ni ne restructure l'existant — cette fonctionnalité s'intègre dans l'app users déjà en place. Rappel d'exécution : tout se fait dans les conteneurs Docker déjà lancés, via docker compose exec web ... — jamais d'installation locale hors conteneur.
+projet: Congo Libs
+objectif: >
+  Les utilisateurs ne peuvent que LIRE les documents (PDF) dans l'app web et l'app mobile.
+  Pas de fichier brut exposé, pas d'export, fuite traçable via filigrane utilisateur.
+  Le mobile a un espace "Téléchargements" (lecture hors-ligne) qui doit rester protégé.
 
-## Comportement attendu
-Un utilisateur qui clique sur "Se connecter avec Google" depuis le frontend React doit pouvoir soit créer un compte automatiquement (première connexion), soit se connecter à un compte existant (si l'email Google correspond déjà à un utilisateur enregistré) — sans jamais créer de doublon. Ce flux coexiste avec l'inscription/connexion classique déjà en place.
+limites_assumees:
+  - "Aucun DRM ne bloque la photo d'écran ni l'appareil rooté/jailbreaké. L'objectif est de dissuader et de tracer, pas d'empêcher à 100 %."
+  - "L'expiration de licence hors-ligne est appliquée côté client : contournable sur appareil rooté. Risque accepté."
+  - "Ne jamais présenter ce système comme infaillible dans la doc ou l'UI."
 
-## Dépendances à ajouter
-django-allauth, dj-rest-auth dans requirements.txt, puis docker compose build web.
+contexte_existant:
+  backend: "Django + DRF, SQLite par défaut (PostgreSQL via variables POSTGRES_*), déployé sur PythonAnywhere"
+  stockage_fichiers: "Google Drive via service account (téléchargement déjà implémenté côté Django)"
+  auth_web: "session + CSRF"
+  auth_mobile: "token DRF (inscription, login, logout, user courant)"
+  documents: "livres, concours, bac, avec soft delete ; historique des téléchargements par utilisateur"
+  deja_en_place: ["throttling DRF", "CORS", "Swagger/OpenAPI", "tests", "admin avec rôles super_admin/editor/reader"]
+  a_confirmer_avant_de_commencer:
+    - "Stack de l'app mobile (React Native, Expo, Flutter ou natif). Les étapes 6 et 7 en dépendent. Si inconnu : poser la question, ne pas deviner."
+    - "Nombre max d'appareils par utilisateur (défaut proposé : 2)."
+    - "Durée de validité d'une licence hors-ligne (défaut proposé : 14 jours)."
 
-## Configuration (config/settings.py) — apps installées, SITE_ID = 1, et REST_AUTH en mode Token (SESSION_LOGIN: False). Identifiants Google (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) via .env.
+regles_generales:
+  - "Aucune URL Drive, aucun ID Drive, aucun chemin de fichier ne sort jamais vers le client."
+  - "Chaque endpoint vérifie : utilisateur authentifié, document existant et non soft-deleted, licence/droit valide. Sinon 404 (pas 403) pour ne pas révéler l'existence."
+  - "Aucune clé, licence ou token dans les logs, les messages d'erreur ou Sentry."
+  - "Toute valeur sensible vient des variables d'environnement, jamais en dur ni commitée."
+  - "Chaque étape se termine par des tests qui passent avant de passer à la suivante."
+  - "Ne pas ajouter de dépendance sans la justifier ; préférer cryptography, PyMuPDF (pymupdf), pikepdf."
 
-## Vue et endpoint — GoogleLoginView basée sur SocialLoginView de dj-rest-auth, exposée sous POST /api/v1/users/auth/google/.
+etapes:
+  - id: 1
+    titre: "Modèle License et appareils"
+    taches:
+      - "Créer le modèle Device (user, device_uuid unique par user, label, created_at, last_seen, revoked bool)."
+      - "Créer le modèle License (user, document, device, content_key_wrapped, issued_at, expires_at, revoked bool, last_renewed_at)."
+      - "Index sur (user, document, device) ; contrainte d'unicité sur (user, document, device) pour les licences actives."
+      - "Migration + enregistrement dans l'admin (lecture seule sauf champ revoked)."
+    pieges_a_eviter:
+      - "Ne pas stocker la clé de contenu en clair en base : la chiffrer avec une clé maîtresse (variable d'environnement DRM_MASTER_KEY, Fernet ou AES-GCM)."
+      - "Ne pas faire confiance à un device_id fourni par le client sans le lier à l'utilisateur authentifié (risque d'usurpation d'appareil)."
+      - "Ne pas oublier ON DELETE : suppression d'un user ou d'un document ne doit pas laisser de licences valides orphelines."
+    critere_acceptation: "Migration appliquée sur SQLite ET PostgreSQL ; tests de contraintes d'unicité verts."
 
-## Contraintes de cohérence — token retourné identique en forme à celui du login classique, modèle User non modifié, périmètre limité à Google pour l'instant, variables documentées dans .env.example.
+  - id: 2
+    titre: "Service de filigrane serveur"
+    taches:
+      - "Créer documents/services/watermark.py : prend les octets du PDF + (user_id, email, date) et renvoie un PDF filigrané."
+      - "Filigrane visible diagonal semi-transparent sur chaque page, plus un identifiant discret répété (pied de page) contenant user_id et horodatage."
+      - "Ajouter aussi les métadonnées PDF (Producer/Keywords) avec un identifiant de session de lecture, pour le traçage."
+      - "Utiliser PyMuPDF (ou pikepdf + reportlab). Traiter page par page, sans charger de copies inutiles en mémoire."
+    pieges_a_eviter:
+      - "Ne PAS faire le filigrane en CSS/overlay côté client : il se supprime en une ligne dans les devtools. Il doit être gravé dans le contenu côté serveur."
+      - "PDF scannés, protégés par mot de passe ou corrompus : gérer l'exception, renvoyer une erreur propre (422), ne jamais renvoyer le fichier non filigrané en repli."
+      - "Gros PDF : limiter la taille traitée (ex. 50 Mo) et le temps ; PythonAnywhere a des timeouts de requête et peu de RAM. Prévoir un rendu page par page plutôt que le PDF entier."
+      - "Texte du filigrane avec caractères accentués : utiliser une police Unicode embarquée, sinon crash ou carrés."
+    critere_acceptation: "Test : le PDF de sortie contient l'email de l'utilisateur sur chaque page ; test sur PDF vide, corrompu, protégé."
 
-## Vérifications à faire — pas de doublon sur double connexion Google, fusion correcte si email déjà inscrit classiquement, erreur 400 propre si token invalide.
+  - id: 3
+    titre: "Endpoint de lecture web (aucun fichier brut)"
+    taches:
+      - "GET /api/documents/<id>/pages/<n>/ : renvoie la page n rendue en image (PNG/WebP) déjà filigranée, via URL signée à courte durée (60 s) ou directement authentifiée par session."
+      - "GET /api/documents/<id>/meta/ : nombre de pages, titre. Aucun lien de fichier."
+      - "Récupération du fichier source via le service account Drive existant, en mémoire, sans écriture disque."
+      - "En-têtes : Cache-Control: no-store, private ; Content-Disposition: inline ; X-Content-Type-Options: nosniff."
+      - "Journaliser chaque lecture (user, document, page, date, IP) dans une table de lectures ou dans l'historique existant."
+      - "Throttling dédié (ex. 120 pages/minute/utilisateur)."
+    pieges_a_eviter:
+      - "IDOR : vérifier que le document est accessible à CET utilisateur et non soft-deleted (404 sinon)."
+      - "Ne pas laisser un CDN ou proxy mettre en cache une page filigranée : elle serait servie à un autre utilisateur. no-store + private obligatoires."
+      - "Ne pas exposer l'ID Drive dans les URLs, les réponses JSON, les en-têtes ou les messages d'erreur."
+      - "Ne pas retélécharger le PDF depuis Drive à chaque page : cache mémoire/disque temporaire court par (user, document), supprimé après expiration. Sinon quota Drive et lenteur."
+      - "CORS : pas de wildcard avec credentials ; origines explicites seulement."
+      - "Requêtes POST/PUT avec session : CSRF actif."
+    critere_acceptation: "Aucune réponse JSON/HTML du backend ne contient d'URL ou d'ID Drive ; un utilisateur non connecté reçoit 401/404 ; page filigranée correcte."
+
+  - id: 4
+    titre: "Licence hors-ligne et téléchargement chiffré (mobile)"
+    taches:
+      - "POST /api/mobile/devices/register/ : enregistre l'appareil (device_uuid généré à l'installation) ; refuse au-delà du max d'appareils."
+      - "POST /api/mobile/documents/<id>/license/ : génère une clé de contenu aléatoire (AES-256), émet une licence (expires_at = now + durée), renvoie la clé dans la réponse sur TLS, et enregistre la version enveloppée en base."
+      - "GET /api/mobile/documents/<id>/download/?license=<id> : renvoie le PDF filigrané chiffré en AES-256-GCM avec cette clé (nonce unique en préfixe, tag d'authentification inclus)."
+      - "POST /api/mobile/licenses/<id>/renew/ : renouvelle si l'utilisateur a toujours accès, le document n'est pas supprimé et la licence n'est pas révoquée."
+      - "Ajouter une entrée dans la table Téléchargement existante à chaque émission."
+    pieges_a_eviter:
+      - "Ne jamais réutiliser un nonce AES-GCM avec la même clé ; clé et nonce aléatoires par fichier."
+      - "Utiliser UNIQUEMENT l'heure serveur pour expires_at ; ne jamais faire confiance à l'horloge du client."
+      - "HTTPS obligatoire : refuser l'émission de licence si la requête n'est pas en TLS (SECURE_PROXY_SSL_HEADER correctement configuré sur PythonAnywhere)."
+      - "Ne pas renvoyer la clé dans une URL ou un paramètre de requête (apparaît dans les logs)."
+      - "Révocation : si le document est soft-deleted, le compte désactivé ou la licence révoquée, le renouvellement doit échouer (403/404)."
+      - "Rate limiting strict sur /license/ et /download/ : un compte ne doit pas pouvoir aspirer toute la bibliothèque."
+      - "Quota par utilisateur (ex. N documents hors-ligne actifs simultanément)."
+    critere_acceptation: "Test : fichier déchiffrable uniquement avec la clé de la licence ; renouvellement refusé après révocation ; licence expirée non renouvelable si document supprimé."
+
+  - id: 5
+    titre: "Révocation et administration"
+    taches:
+      - "Actions admin : révoquer une licence, tous les appareils d'un utilisateur, ou toutes les licences d'un document."
+      - "Visualiser les lectures et téléchargements par utilisateur (traçabilité en cas de fuite)."
+      - "Permissions : seuls super_admin et editor peuvent révoquer ; reader en lecture seule."
+    pieges_a_eviter:
+      - "Une révocation doit être effective au prochain renouvellement ET au prochain contrôle en ligne ; documenter clairement qu'un appareil hors-ligne garde l'accès jusqu'à expiration."
+      - "Ne pas permettre à un editor de révoquer sans trace : journaliser qui a révoqué quoi."
+    critere_acceptation: "Test de bout en bout : révocation puis échec du renouvellement."
+
+  - id: 6
+    titre: "App mobile : stockage chiffré et viewer interne"
+    note: "Adapter à la stack confirmée avant de coder (voir a_confirmer_avant_de_commencer)."
+    taches:
+      - "Stocker clé de contenu, licence et device_uuid dans le stockage sécurisé : Keychain (iOS) / Keystore (Android) via la lib de la stack (expo-secure-store, react-native-keychain, flutter_secure_storage, etc.)."
+      - "Stocker les fichiers téléchargés chiffrés, dans le répertoire privé de l'app uniquement (pas de stockage partagé, pas de galerie, pas de dossier Téléchargements système)."
+      - "Déchiffrer en mémoire pour l'affichage ; viewer interne sans bouton partager, ouvrir avec, imprimer ni enregistrer."
+      - "Espace Téléchargements : liste des documents hors-ligne avec date d'expiration visible, bouton de renouvellement quand en ligne, suppression locale."
+      - "Android : FLAG_SECURE sur l'écran de lecture (bloque captures et enregistrement)."
+      - "iOS : détecter l'enregistrement d'écran (UIScreen.isCaptured) et masquer le contenu pendant l'enregistrement ; écouter la capture d'écran pour journaliser l'événement."
+      - "Au démarrage et à la déconnexion : supprimer les fichiers dont la licence est expirée ; à la déconnexion, supprimer clés et fichiers du compte."
+      - "Vérifier la licence (expires_at) avant chaque ouverture ; si expirée, demander la connexion pour renouveler."
+    pieges_a_eviter:
+      - "Ne JAMAIS stocker la clé dans AsyncStorage, SharedPreferences, localStorage ou un fichier : uniquement Keychain/Keystore."
+      - "Beaucoup de libs PDF mobiles exigent un chemin de fichier : déchiffrer vers un fichier temporaire annule le chiffrement. Si c'est inévitable, écrire dans le cache privé de l'app, supprimer à la fermeture du viewer ET au démarrage de l'app, et le noter comme risque accepté. Préférer un rendu page par page en mémoire (images) si la stack le permet."
+      - "Désactiver les sauvegardes cloud des fichiers (android:allowBackup=false pour ce dossier ; exclusion iCloud sur iOS) sinon les fichiers chiffrés et parfois les clés partent dans les sauvegardes."
+      - "Ne pas se fier à l'horloge de l'appareil seule : stocker aussi le dernier horodatage serveur vu et refuser si l'horloge recule."
+      - "FLAG_SECURE s'applique par fenêtre : l'activer sur tous les écrans de lecture, y compris après retour d'arrière-plan."
+      - "Ne pas masquer les erreurs de déchiffrement par un fichier vide : afficher un message et proposer de retélécharger."
+      - "Aperçu dans le sélecteur d'applications récentes : masquer le contenu (écran flou/neutre) quand l'app passe en arrière-plan."
+    critere_acceptation: "Aucun PDF lisible trouvé dans le stockage de l'app après téléchargement (inspection du dossier) ; capture d'écran bloquée sur Android ; fichier expiré supprimé."
+
+  - id: 7
+    titre: "App web : viewer en lecture seule"
+    taches:
+      - "Viewer React affichant les pages-images servies par l'endpoint de l'étape 3 (chargement paresseux, précharger n+1)."
+      - "Pas de bouton télécharger/imprimer ; désactiver la sélection de texte, le glisser-déposer d'image et le clic droit sur le viewer."
+      - "Masquer le contenu pendant l'impression : @media print { .viewer { display: none } } avec message neutre."
+      - "Gérer l'expiration de session : redirection vers la connexion, jamais d'affichage d'une page périmée."
+    pieges_a_eviter:
+      - "Ne pas charger le PDF entier dans le navigateur (blob) : il devient récupérable via les devtools. Servir page par page."
+      - "Les protections côté navigateur (clic droit, sélection) sont cosmétiques ; ne jamais s'y fier comme seule défense, la défense réelle est côté serveur (filigrane + pas de fichier brut)."
+      - "Ne pas mettre d'URL signée longue durée dans le DOM ; durée courte, renouvelée à la demande."
+    critere_acceptation: "L'onglet Réseau n'affiche jamais un PDF complet, uniquement des images de pages filigranées."
+
+  - id: 8
+    titre: "Sécurité transverse et mise en production"
+    taches:
+      - "Variables d'environnement : DRM_MASTER_KEY, durée de licence, nombre max d'appareils, taille max PDF. Documenter dans .env.example (sans valeurs réelles)."
+      - "Vérifier DEBUG=False en production, ALLOWED_HOSTS, SECURE_SSL_REDIRECT, cookies Secure/HttpOnly/SameSite."
+      - "Tâche de nettoyage périodique : licences expirées, caches temporaires de PDF."
+      - "Documentation du flux (diagramme simple) dans le dépôt."
+    pieges_a_eviter:
+      - "SQLite en production avec écritures concurrentes (journalisation des lectures à chaque page) : verrous possibles. Limiter les écritures (journaliser par session de lecture, pas par page) ou passer à PostgreSQL."
+      - "Perte de DRM_MASTER_KEY = toutes les clés de licences inutilisables. La sauvegarder séparément et la documenter pour la rotation."
+      - "Ne pas commiter .env ni DRM_MASTER_KEY ; vérifier .gitignore et l'historique Git."
+      - "Ne pas laisser les endpoints Swagger exposer des exemples contenant de vraies clés ou licences."
+    critere_acceptation: "Checklist de sécurité cochée ; aucun secret dans git (git log -p | grep sur les motifs de clés)."
+
+tests_obligatoires:
+  - "Utilisateur non authentifié : 401 sur toutes les routes DRM."
+  - "Document soft-deleted : 404 partout, renouvellement de licence refusé."
+  - "Utilisateur A ne peut pas lire ni télécharger via la licence de l'utilisateur B."
+  - "Le PDF servi contient bien le filigrane de l'utilisateur (email présent sur chaque page)."
+  - "Dépassement du nombre d'appareils : refusé."
+  - "Licence expirée ou révoquée : renouvellement impossible."
+  - "Déchiffrement : fichier illisible avec une mauvaise clé, nonce différent à chaque fichier."
+  - "Throttling : 429 au-delà du quota."
+
+ordre_recommande: [1, 2, 3, 7, 4, 5, 6, 8]
+ordre_justification: "Le web (3 puis 7) valide le filigrane et l'accès sans fichier brut avant d'attaquer le chiffrement mobile, plus lourd."
+
+format_de_reponse_attendu_de_l_agent:
+  - "Avant chaque étape : résumé de ce qui va être modifié (fichiers, migrations)."
+  - "Après chaque étape : tests exécutés et leur résultat réel, pas une affirmation sans exécution."
+  - "En cas de doute sur la stack mobile ou une durée/quota : poser la question avant de coder."

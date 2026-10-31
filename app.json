@@ -11,12 +11,14 @@
       "supportsTablet": true
     },
     "android": {
+      "allowBackup": false,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "package": "com.anonymous.congolibs"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -31,7 +33,8 @@
         }
       ],
       "expo-router",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-secure-store"
     ]
   }
 }

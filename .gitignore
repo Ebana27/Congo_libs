@@ -38,3 +38,11 @@ yarn-error.*
 /.claude
 /ios
 /android
+
+.venv/
+.venv311/
+venv/
+node_modules/
+*.sqlite3
+__pycache__/
+.env

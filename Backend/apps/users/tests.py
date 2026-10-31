@@ -1,5 +1,6 @@
 import json
 import os
+from urllib.error import URLError
 from unittest.mock import patch
 
 from allauth.socialaccount.models import SocialAccount
@@ -9,7 +10,7 @@ from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.authtoken.models import Token
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient, APITestCase
 
 from apps.users.models import User
 
@@ -24,9 +25,39 @@ class GoogleAuthTests(APITestCase):
             "family_name": "User",
         }
 
+    def test_google_login_accepts_verified_email_only_payload(self):
+        existing_user = User.objects.create_user(
+            username="verifieduser",
+            email="verified@example.com",
+            password="StrongPass123!",
+        )
+
+        with patch("apps.users.views.web.urlopen") as mock_urlopen:
+            mock_urlopen.return_value.__enter__.return_value.read.return_value = json.dumps(
+                {
+                    "email": "verified@example.com",
+                    "verified_email": True,
+                    "given_name": "Google",
+                    "family_name": "User",
+                }
+            ).encode("utf-8")
+
+            response = self.client.post(
+                reverse("google_login"),
+                {"access_token": "valid-google-token"},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(User.objects.filter(email__iexact="verified@example.com").count(), 1)
+        self.assertTrue(
+            SocialAccount.objects.filter(user=existing_user, provider="google", uid="verified@example.com").exists()
+        )
+        self.assertEqual(self.client.get(reverse("session")).status_code, status.HTTP_200_OK)
+
     def test_google_login_invalid_token_returns_400(self):
         with patch("apps.users.views.web.urlopen") as mock_urlopen:
-            mock_urlopen.side_effect = Exception("bad token")
+            mock_urlopen.side_effect = URLError("bad token")
             response = self.client.post(
                 reverse("google_login"),
                 {"access_token": "invalid-token"},
@@ -89,6 +120,73 @@ class BrevoSmtpEmailDeliveryTests(SimpleTestCase):
 
         self.assertEqual(sent, 1)
         mocked.assert_called_once()
+
+
+class WebSessionAuthTests(APITestCase):
+    def test_csrf_endpoint_sets_cookie_and_returns_token(self):
+        response = self.client.get(reverse("csrf"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("csrftoken", response.cookies)
+        self.assertTrue(response.data["csrfToken"])
+
+    def test_web_login_accepts_email_and_creates_session(self):
+        user = User.objects.create_user(
+            username="webreader",
+            email="reader@example.com",
+            password="StrongPass123!",
+        )
+
+        response = self.client.post(
+            reverse("login"),
+            {"username": user.email, "password": "StrongPass123!"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["user"]["id"], user.id)
+        session_response = self.client.get(reverse("session"))
+        self.assertEqual(session_response.status_code, status.HTTP_200_OK)
+
+    def test_web_login_requires_csrf_token(self):
+        user = User.objects.create_user(
+            username="csrfreader",
+            email="csrfreader@example.com",
+            password="StrongPass123!",
+        )
+        client = APIClient(enforce_csrf_checks=True)
+
+        response = client.post(
+            reverse("login"),
+            {"username": user.email, "password": "StrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        csrf_response = client.get(reverse("csrf"))
+        token = csrf_response.data["csrfToken"]
+        response = client.post(
+            reverse("login"),
+            {"username": user.email, "password": "StrongPass123!"},
+            format="json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_web_registration_accepts_username_and_email(self):
+        response = self.client.post(
+            "/api/v1/users/auth/registration/",
+            {
+                "username": "signupreader",
+                "email": "signupreader@example.com",
+                "password1": "StrongPass123!",
+                "password2": "StrongPass123!",
+            },
+            format="json",
+        )
+
+        self.assertIn(response.status_code, (status.HTTP_200_OK, status.HTTP_201_CREATED))
+        self.assertTrue(User.objects.filter(username="signupreader", email="signupreader@example.com").exists())
 
 
 class MobileAuthTests(APITestCase):

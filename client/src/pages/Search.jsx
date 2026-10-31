@@ -1,337 +1,108 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import {
-  FiArrowLeft,
-  FiArrowRight,
-  FiBookOpen,
-  FiSearch,
-  FiStar,
-  FiX,
-} from 'react-icons/fi'
-
+import { Link, useNavigate } from 'react-router-dom'
+import { FiArrowLeft, FiArrowRight, FiBookOpen, FiSearch, FiStar, FiX } from 'react-icons/fi'
 import books from '../data/books'
 
 function Search() {
   const navigate = useNavigate()
-
   const [query, setQuery] = useState('')
   const [type, setType] = useState('all')
+  const value = query.trim().toLowerCase()
 
   const results = useMemo(() => {
-    const value = query.trim().toLowerCase()
-
-    if (!value) {
-      return []
-    }
-
+    if (!value) return []
     return books.filter((book) => {
-      const title = book.title.toLowerCase()
-      const author = book.author.toLowerCase()
-      const category = book.category.toLowerCase()
-
-      if (type === 'books') {
-        return title.includes(value)
-      }
-
-      if (type === 'authors') {
-        return author.includes(value)
-      }
-
-      return (
-        title.includes(value) ||
-        author.includes(value) ||
-        category.includes(value)
-      )
+      if (type === 'books') return book.title.toLowerCase().includes(value)
+      if (type === 'authors') return book.author.toLowerCase().includes(value)
+      return `${book.title} ${book.author} ${book.category}`.toLowerCase().includes(value)
     })
-  }, [query, type])
-
-  const clearSearch = () => {
-    setQuery('')
-  }
+  }, [value, type])
 
   return (
-    <div className="search-page">
-
-      {/* HEADER */}
-
-      <section className="search-page-header">
-
-        <button
-          className="search-back-button"
-          onClick={() => navigate(-1)}
-        >
-          <FiArrowLeft />
-          Retour
+    <main className="cg-page cg-search-page">
+      <header className="cg-page-heading cg-page-header cg-search-heading">
+        <button className="cg-text-button cg-text-link" onClick={() => navigate(-1)}>
+          <FiArrowLeft aria-hidden="true" /> Retour
         </button>
+        <div>
+          <p className="cg-eyebrow">Congolibs · Recherche</p>
+          <h1>Que souhaitez-vous lire ?</h1>
+          <p>Recherchez un livre, un auteur ou une catégorie.</p>
+        </div>
+      </header>
 
-        <span className="section-label">
-          CONGOLIBS
-        </span>
-
-        <h1>
-          Rechercher
-        </h1>
-
-        <p>
-          Trouvez rapidement un livre, un auteur
-          ou une œuvre dans notre bibliothèque.
-        </p>
-
-      </section>
-
-
-      {/* SEARCH BOX */}
-
-      <section className="global-search-box">
-
-        <FiSearch />
-
-        <input
-          type="text"
-          autoFocus
-          value={query}
-          onChange={(event) =>
-            setQuery(event.target.value)
-          }
-          placeholder="Rechercher un livre ou un auteur..."
-        />
-
+      <div className="cg-search-field cg-global-search">
+        <FiSearch aria-hidden="true" />
+        <label className="cg-visually-hidden" htmlFor="book-search">Rechercher dans la bibliothèque</label>
+        <input id="book-search" className="cg-input" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Titre, auteur ou catégorie" />
         {query && (
-          <button
-            className="clear-search"
-            onClick={clearSearch}
-            aria-label="Effacer la recherche"
-          >
-            <FiX />
+          <button type="button" className="cg-icon-button" onClick={() => setQuery('')} aria-label="Effacer la recherche">
+            <FiX aria-hidden="true" />
           </button>
         )}
+      </div>
 
-        <button className="search-submit">
-          Rechercher
-        </button>
+      <nav className="cg-filter-list" aria-label="Type de recherche">
+        {[['all', 'Tout'], ['books', 'Livres'], ['authors', 'Auteurs']].map(([value, label]) => (
+          <button type="button" key={value} className="cg-filter cg-filter-chip" aria-pressed={type === value} onClick={() => setType(value)}>{label}</button>
+        ))}
+      </nav>
 
-      </section>
-
-
-      {/* FILTRES */}
-
-      <section className="search-filters">
-
-        <button
-          className={
-            type === 'all'
-              ? 'search-filter active'
-              : 'search-filter'
-          }
-          onClick={() => setType('all')}
-        >
-          Tout
-        </button>
-
-        <button
-          className={
-            type === 'books'
-              ? 'search-filter active'
-              : 'search-filter'
-          }
-          onClick={() => setType('books')}
-        >
-          Livres
-        </button>
-
-        <button
-          className={
-            type === 'authors'
-              ? 'search-filter active'
-              : 'search-filter'
-          }
-          onClick={() => setType('authors')}
-        >
-          Auteurs
-        </button>
-
-      </section>
-
-
-      {/* ÉTAT INITIAL */}
-
-      {!query && (
-
-        <section className="search-empty">
-
-          <div className="search-empty-icon">
-            <FiSearch />
+      {!query ? (
+        <section className="cg-empty-state cg-search-prompt">
+          <FiSearch aria-hidden="true" />
+          <h2>Commencez votre recherche</h2>
+          <p>Saisissez un titre, un nom d’auteur ou une catégorie.</p>
+          <div className="cg-search-suggestions" role="group" aria-label="Suggestions d’auteurs de la collection">
+            <span>Dans la collection :</span>
+            {[...new Set(books.map((book) => book.author))].slice(0, 3).map((author) => (
+              <button type="button" key={author} className="cg-filter cg-filter-chip" onClick={() => setQuery(author)}>{author}</button>
+            ))}
           </div>
-
-          <h2>
-            Que souhaitez-vous lire ?
-          </h2>
-
-          <p>
-            Commencez à saisir un titre, un auteur
-            ou une catégorie pour lancer votre recherche.
-          </p>
-
-          <div className="popular-searches">
-
-            <span>
-              Suggestions :
-            </span>
-
-            <button
-              onClick={() => setQuery('Alain Mabanckou')}
-            >
-              Alain Mabanckou
-            </button>
-
-            <button
-              onClick={() => setQuery('Roman')}
-            >
-              Roman
-            </button>
-
-            <button
-              onClick={() => setQuery('Sony Labou Tansi')}
-            >
-              Sony Labou Tansi
-            </button>
-
-          </div>
-
         </section>
-
-      )}
-
-
-      {/* RÉSULTATS */}
-
-      {query && (
-
-        <section className="search-results">
-
-          <div className="search-results-header">
-
+      ) : (
+        <section className="cg-section" aria-labelledby="search-results">
+          <div className="cg-section-heading">
             <div>
-
-              <span className="section-label">
-                RÉSULTATS
-              </span>
-
-              <h2>
-                Résultats pour « {query} »
-              </h2>
-
+              <p className="cg-eyebrow">Résultats</p>
+              <h2 id="search-results">Pour « {query} »</h2>
             </div>
-
-            <span className="search-result-count">
-              {results.length}{' '}
-              {results.length > 1
-                ? 'résultats'
-                : 'résultat'}
-            </span>
-
+            <span className="cg-result-count">{results.length} {results.length > 1 ? 'résultats' : 'résultat'}</span>
           </div>
-
-
-          {results.length > 0 ? (
-
-            <div className="search-results-list">
-
+          {results.length ? (
+            <div className="cg-book-list">
               {results.map((book) => (
-
-                <article
-                  className="search-result-card"
-                  key={book.id}
-                  onClick={() =>
-                    navigate(`/livre/${book.id}`)
-                  }
-                >
-
-                  <div className="search-result-cover">
-                    <FiBookOpen />
-                  </div>
-
-
-                  <div className="search-result-info">
-
-                    <span>
-                      {book.category}
-                    </span>
-
-                    <h3>
-                      {book.title}
-                    </h3>
-
-                    <p>
-                      {book.author}
-                    </p>
-
-                    <div className="search-result-meta">
-
-                      <span>
-                        <FiStar />
-                        {book.rating}
+                <Link className="cg-book-list-card cg-book-card-link" key={book.id} to={`/livre/${book.id}`}>
+                  <span className="cg-book-cover">
+                    {book.cover ? <img src={book.cover} alt="" /> : (
+                      <span className="cg-book-cover-placeholder">
+                        <span className="cg-book-cover-mark"><FiBookOpen aria-hidden="true" /></span>
+                        <span className="cg-book-cover-category">{book.category}</span>
+                        <strong>{book.title}</strong>
+                        <span className="cg-book-cover-author">{book.author}</span>
                       </span>
-
-                      <span>
-                        {book.pages} pages
-                      </span>
-
-                    </div>
-
+                    )}
+                  </span>
+                  <div className="cg-book-info">
+                    <span className="cg-book-category">{book.category}</span>
+                    <h3>{book.title}</h3>
+                    <p>{book.author}</p>
+                    <span className="cg-book-meta"><FiStar aria-hidden="true" /> {book.rating}/5 · {book.pages} pages <FiArrowRight aria-hidden="true" /></span>
                   </div>
-
-
-                  <button
-                    className="search-result-button"
-                    onClick={(event) => {
-                      event.stopPropagation()
-
-                      navigate(`/livre/${book.id}`)
-                    }}
-                  >
-                    Voir
-                    <FiArrowRight />
-                  </button>
-
-                </article>
-
+                </Link>
               ))}
-
             </div>
-
           ) : (
-
-            <div className="no-search-results">
-
-              <div className="no-results-icon">
-                <FiSearch />
-              </div>
-
-              <h3>
-                Aucun résultat
-              </h3>
-
-              <p>
-                Aucun livre ou auteur ne correspond
-                à votre recherche.
-              </p>
-
-              <button
-                onClick={clearSearch}
-              >
-                Nouvelle recherche
-              </button>
-
+            <div className="cg-empty-state" role="status">
+              <FiSearch aria-hidden="true" />
+              <h3>Aucun résultat</h3>
+              <p>Aucun livre ne correspond à cette recherche.</p>
+              <button className="cg-button cg-button-secondary cg-secondary-button" onClick={() => setQuery('')}>Nouvelle recherche</button>
             </div>
-
           )}
-
         </section>
-
       )}
-
-    </div>
+    </main>
   )
 }
 

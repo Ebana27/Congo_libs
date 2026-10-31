@@ -1,79 +1,37 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import {
   FiBookOpen,
-  FiHeart,
-  FiStar,
-  FiArrowRight,
 } from 'react-icons/fi'
 
 function BookCard({ book }) {
-  const navigate = useNavigate()
-
   return (
-    <article
-      className="book-card"
-      onClick={() => navigate(`/livre/${book.id}`)}
-    >
-      <div className="book-cover">
-
-        {book.cover ? (
-          <img
-            src={book.cover}
-            alt={book.title}
-          />
-        ) : (
-          <div className="book-cover-placeholder">
-            <FiBookOpen />
-
-            <strong>{book.title}</strong>
-
-            <span>{book.author}</span>
-          </div>
-        )}
-
-        <button
-          className="favorite-button"
-          onClick={(event) => {
-            event.stopPropagation()
-          }}
-          aria-label="Ajouter aux favoris"
-        >
-          <FiHeart />
-        </button>
-
-        <div className="book-read-button">
-          Lire
-          <FiArrowRight />
+    <article className="book-card cg-book-card">
+      <Link
+        className="cg-book-card-link"
+        to={`/livre/${book.id}`}
+        aria-label={`${book.title}, de ${book.author}`}
+      >
+        <div className="book-cover cg-book-cover">
+          {book.cover ? (
+            <img src={book.cover} alt="" loading="lazy" />
+          ) : (
+            <div className="book-cover-placeholder cg-book-cover-placeholder">
+              <span className="cg-book-cover-mark" aria-hidden="true">
+                <FiBookOpen />
+              </span>
+              <span className="cg-book-cover-category">{book.category}</span>
+              <strong>{book.title}</strong>
+              <span className="cg-book-cover-author">{book.author}</span>
+            </div>
+          )}
         </div>
-      </div>
 
-      <div className="book-info">
-
-        <span className="book-category">
-          {book.category}
-        </span>
-
-        <h3>
-          {book.title}
-        </h3>
-
-        <p>
-          {book.author}
-        </p>
-
-        <div className="book-meta">
-
-          <span className="book-rating">
-            <FiStar />
-            {book.rating}
-          </span>
-
-          <span>
-            {book.pages} pages
-          </span>
-
+        <div className="book-info cg-book-info">
+          <span className="book-category">{book.category}</span>
+          <h3>{book.title}</h3>
+          <p>{book.author}</p>
         </div>
-      </div>
+      </Link>
     </article>
   )
 }

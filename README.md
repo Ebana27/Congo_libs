@@ -218,6 +218,40 @@ Aucune de ces pistes ne doit cependant prendre le dessus sur la mission principa
 - Suivi des performances.
 - Collecte des retours utilisateurs.
 
+## 13. Sécurité DRM et mise en production
+
+Le flux DRM de Congolibs doit rester conforme à cette règle simple : le client ne reçoit jamais le PDF brut, seulement des pages filigranées ou des fichiers chiffrés hors-ligne déjà sécurisés.
+
+```text
+Utilisateur -> Auth (session ou token)
+          -> Document existant & non soft-deleted ?
+              |-- non -> 404
+              |-- oui -> vérification licence / droits / session
+                          -> PDF source chargé depuis Google Drive côté backend
+                          -> filigrane serveur (email + user_id + timestamp)
+                          -> page image (web) ou fichier chiffré (mobile)
+
+Web :   page image PNG -> navigateur -> lecture sans fichier brut
+Mobile: fichier chiffré AES-GCM -> keystore/secure store -> déchiffrement mémoire -> viewer interne
+```
+
+Checklist de sécurité à cocher avant mise en production :
+
+- DEBUG=False
+- ALLOWED_HOSTS correctement renseignés
+- SECURE_SSL_REDIRECT=True derrière TLS/proxy
+- SESSION_COOKIE_SECURE=True / CSRF_COOKIE_SECURE=True
+- SESSION_COOKIE_HTTPONLY=True / SameSite=Lax
+- DRM_MASTER_KEY stockée hors Git et rotée séparément
+- DRM_MAX_DEVICES et DRM_LICENSE_DAYS documentés dans le .env
+- taille max PDF limitée pour éviter les gros fichiers
+- aucun secret dans le dépôt Git ou l’historique
+- taux de requêtes / throttling sur endpoints DRM activés
+- fichiers hors-ligne supprimés après expiration ou déconnexion
+- journalisation de lecture et capture d’écran conservée sans exposition de clés
+
+Les variables clés doivent rester dans `.env` ou dans le secret manager du fournisseur d’hébergement ; jamais en dur dans le code ni dans le dépôt.
+
 ## 13. Vision
 
 Congolibs ne doit pas être uniquement un site qui stocke des PDF. La vision à long terme est de construire un véritable **écosystème documentaire et éducatif numérique congolais**, capable d'accompagner l'élève et l'étudiant dans ses recherches et son apprentissage.
@@ -234,3 +268,45 @@ Le projet doit donc être construit progressivement : un MVP utile, simple et fi
 - Finaliser les 18 écrans.
 - Choisir l'architecture backend.
 - Préparer le prototype UX/UI.
+
+## 15. Lecture protégée des documents
+
+Le lecteur web reçoit des pages rendues et filigranées par le backend, tandis que
+l'application mobile peut conserver des fichiers chiffrés pour la lecture hors
+ligne. Ce dispositif dissuade et aide à tracer les fuites, mais ne peut pas
+empêcher une capture d'écran externe ni garantir la sécurité d'un appareil
+rooté/jailbreaké.
+
+### Configuration
+
+Copiez `.env.exemple` vers `.env`, puis remplacez toutes les valeurs d'exemple.
+Générez `DRM_MASTER_KEY` dans l'environnement Backend avec la commande indiquée
+dans le fichier d'exemple. La clé Fernet est nécessaire pour déchiffrer les clés
+de contenu enveloppées en base : une perte rend les licences existantes
+irrécupérables. Sauvegardez-la dans un gestionnaire de secrets et dans une
+sauvegarde protégée séparée de la base. Ne la commitez jamais. Sa rotation exige
+de ré-envelopper les clés de contenu existantes avec l'ancienne et la nouvelle
+clé avant de déployer la nouvelle configuration.
+
+Les valeurs par défaut des licences sont de 7 jours, 2 appareils par compte, 10
+documents hors ligne actifs et 50 MiB par PDF. `EXPO_PUBLIC_API_URL` doit viser
+l'origine HTTPS de l'API joignable par les appareils mobiles.
+
+### Stockage hors ligne et production
+
+Les documents mobiles sont chiffrés dans le cache privé de l'application; la
+lecture native crée temporairement une copie PDF déchiffrée dans ce même cache,
+puis la supprime à la fermeture du lecteur, à la déconnexion et au prochain
+démarrage. Une interruption brutale ou un appareil compromis peut exposer cette
+copie temporaire.
+
+En production, désactivez `DEBUG`, utilisez HTTPS de bout en bout (ou configurez
+correctement les en-têtes de proxy TLS), activez les cookies Secure et définissez
+`ALLOWED_HOSTS` et `CSRF_TRUSTED_ORIGINS` pour les domaines réellement utilisés.
+Le `docker-compose.yml` fourni lance le serveur de développement Django et ne
+constitue pas une configuration de déploiement de production.
+
+Pour Android, générez le projet natif avec `npx expo prebuild --platform android`,
+puis lancez `npx expo run:android` avec un JDK et le SDK Android installés. iOS
+nécessite macOS et Xcode. L'export JavaScript seul ne remplace pas la compilation
+native des modules du lecteur PDF.

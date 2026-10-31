@@ -1,19 +1,36 @@
+import logging
 import json
 import os
+import uuid
+from datetime import timedelta
+
+from django.core.cache import cache
 from django.utils.decorators import method_decorator
 from django.contrib.auth import authenticate, login, logout
-from django.core.files.base import ContentFile
-from django.http import FileResponse
+from django.http import HttpResponse
 from django.middleware.csrf import get_token
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
+from django.utils.cache import patch_vary_headers
+from google.auth.exceptions import GoogleAuthError
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from rest_framework import generics, mixins, serializers, status, viewsets
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 
-from apps.documents.models import BacDetail, ConcoursDetail, Document, LivreDetail, Telechargement
+from apps.documents.models import BacDetail, ConcoursDetail, Document, DocumentRead, LivreDetail, Telechargement
 from apps.users.api.serializers import UserSerializer
+from apps.users.models import User
+from apps.documents.services.watermark import (
+    InvalidPdfPage,
+    WatermarkError,
+    pdf_page_count,
+    render_pdf_page,
+)
 
 from .serializers import (
     BacDetailSerializer,
@@ -23,6 +40,120 @@ from .serializers import (
     PublicDocumentSerializer,
     TelechargementSerializer,
 )
+
+logger = logging.getLogger(__name__)
+
+
+class DocumentSourceUnavailable(Exception):
+    pass
+
+
+def get_cached_document_pdf(document, user):
+    key = f"drm:source:{user.pk}:{document.pk}"
+    pdf_bytes = cache.get(key)
+    if pdf_bytes is not None:
+        return pdf_bytes
+
+    try:
+        pdf_bytes = get_google_drive_file_bytes(document.lien_telechargement)
+    except (GoogleAuthError, HttpError, OSError, ValueError) as exc:
+        logger.warning("Unable to load DRM source for document %s and user %s", document.pk, user.pk)
+        raise DocumentSourceUnavailable from exc
+
+    if not isinstance(pdf_bytes, bytes) or not pdf_bytes:
+        logger.warning("Empty DRM source for document %s and user %s", document.pk, user.pk)
+        raise DocumentSourceUnavailable
+
+    cache.set(key, pdf_bytes, timeout=60)
+    return pdf_bytes
+
+
+class ReadingSessionQuerySerializer(serializers.Serializer):
+    session = serializers.UUIDField(required=False)
+
+
+class DocumentReaderMetaView(generics.GenericAPIView):
+    queryset = Document.objects.filter(delete=False)
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+
+    def get(self, request, *args, **kwargs):
+        document = get_object_or_404(self.get_queryset(), pk=kwargs["pk"])
+        query = ReadingSessionQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        session_id = query.validated_data.get("session", uuid.uuid4())
+
+        try:
+            page_count = pdf_page_count(get_cached_document_pdf(document, request.user))
+        except DocumentSourceUnavailable:
+            return Response(
+                {"detail": "Le document est temporairement indisponible."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except WatermarkError:
+            return Response(
+                {"detail": "Le document PDF ne peut pas être lu."},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        response = Response(
+            {
+                "title": document.nom,
+                "pages": page_count,
+                "reading_session": str(session_id),
+            }
+        )
+        response["Cache-Control"] = "no-store, private"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+
+
+class DocumentReaderPageView(generics.GenericAPIView):
+    queryset = Document.objects.filter(delete=False)
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication, SessionAuthentication]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "drm_pages"
+
+    def get(self, request, *args, **kwargs):
+        document = get_object_or_404(self.get_queryset(), pk=kwargs["pk"])
+        query = ReadingSessionQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        session_id = query.validated_data.get("session", uuid.uuid4())
+
+        try:
+            image = render_pdf_page(
+                get_cached_document_pdf(document, request.user),
+                page_number=kwargs["page"],
+                user_id=request.user.pk,
+                email=request.user.email,
+            )
+        except DocumentSourceUnavailable:
+            return Response(
+                {"detail": "Le document est temporairement indisponible."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except InvalidPdfPage:
+            return Response({"detail": "Page introuvable."}, status=status.HTTP_404_NOT_FOUND)
+        except WatermarkError:
+            return Response(
+                {"detail": "Le document PDF ne peut pas être lu."},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            )
+
+        DocumentRead.objects.create(
+            user=request.user,
+            document=document,
+            session_id=session_id,
+            page_number=kwargs["page"],
+            ip_address=request.META.get("REMOTE_ADDR"),
+        )
+        response = HttpResponse(image, content_type="image/png")
+        response["Cache-Control"] = "no-store, private"
+        response["Content-Disposition"] = "inline"
+        response["X-Content-Type-Options"] = "nosniff"
+        patch_vary_headers(response, ("Cookie", "Authorization"))
+        return response
 
 
 def get_google_drive_service():
@@ -188,25 +319,6 @@ class DocumentAdminViewSet(viewsets.ModelViewSet):
         instance.save(update_fields=["delete"])
 
 
-class DownloadDocumentView(generics.GenericAPIView):
-    queryset = Document.objects.filter(delete=False)
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        document = self.get_object()
-        file_id = document.lien_telechargement
-        try:
-            pdf_bytes = get_google_drive_file_bytes(file_id)
-        except Exception as exc:
-            return Response({"detail": f"Impossible de récupérer le document: {exc}"}, status=status.HTTP_502_BAD_GATEWAY)
-
-        Telechargement.objects.create(user=request.user, document=document)
-        filename = f"{document.nom or 'document'}.pdf"
-        response = FileResponse(ContentFile(pdf_bytes, name=filename), as_attachment=True, filename=filename)
-        response["Content-Type"] = "application/pdf"
-        return response
-
-
 class DownloadHistoryView(mixins.ListModelMixin, generics.GenericAPIView):
     serializer_class = TelechargementSerializer
     permission_classes = [IsAuthenticated]
@@ -218,15 +330,21 @@ class DownloadHistoryView(mixins.ListModelMixin, generics.GenericAPIView):
         return self.list(request, *args, **kwargs)
 
 
+@method_decorator(csrf_protect, name="dispatch")
 class LoginView(generics.GenericAPIView):
     permission_classes = [AllowAny]
     throttle_scope = "login"
 
     def post(self, request, *args, **kwargs):
-        username = request.data.get("username")
+        username = request.data.get("username") or request.data.get("email")
         password = request.data.get("password")
-        if not username or not password:
+        if not isinstance(username, str) or not username.strip() or not isinstance(password, str) or not password:
             raise serializers.ValidationError({"detail": "Le nom d'utilisateur et le mot de passe sont requis."})
+        username = username.strip()
+        if "@" in username:
+            user_by_email = User.objects.filter(email__iexact=username).only("username").first()
+            if user_by_email:
+                username = user_by_email.username
         user = authenticate(
             request,
             username=username,
@@ -236,6 +354,15 @@ class LoginView(generics.GenericAPIView):
             return Response({"detail": "Identifiants invalides."}, status=status.HTTP_401_UNAUTHORIZED)
         login(request, user)
         return Response({"user": UserSerializer(user).data, "csrfToken": get_token(request)})
+
+
+class CsrfTokenView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @method_decorator(ensure_csrf_cookie)
+    def get(self, request, *args, **kwargs):
+        return Response({"csrfToken": get_token(request)})
 
 
 class LogoutView(generics.GenericAPIView):

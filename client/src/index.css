@@ -6920,6 +6920,9 @@ img {
 .auth-error { padding: 10px 11px; border: 1px solid rgba(255,85,85,.18); border-radius: 7px; background: rgba(255,85,85,.06); color: #ff8f8f; font-size: 8px; line-height: 1.5; }
 .auth-submit { height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; border: 0; border-radius: 8px; background: var(--green); color: #041008; font-size: 10px; font-weight: 800; }
 .auth-submit:hover { background: var(--green-light); transform: translateY(-1px); }
+.auth-google { width: 100%; height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 14px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: #202124; font-size: 10px; font-weight: 700; }
+.auth-google:hover { background: #f1f3f4; }
+.auth-google:disabled { cursor: wait; opacity: .7; }
 .auth-switch { margin: 20px 0 0; text-align: center; color: var(--text-muted); font-size: 8px; }
 .auth-switch a { color: var(--green); font-weight: 700; }
 
@@ -6932,4 +6935,42 @@ img {
   .auth-card { padding: 26px 21px; border-radius: 15px; }
   .navbar-logout { display: none; }
   .auth-page { padding: 18px; }
+}
+
+.drm-reader {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.drm-reader-header { gap: 14px; }
+.drm-page-count { margin-left: auto; color: var(--text-secondary); font-size: 12px; }
+.drm-viewer { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.drm-image-container {
+  min-height: min(70vh, 780px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.drm-image-container img {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  pointer-events: none;
+}
+.drm-reader-error { color: #ff8f8f; text-align: center; }
+.drm-print-message { display: none; }
+
+@media print {
+  .drm-viewer { display: none !important; }
+  .drm-print-message { display: block !important; }
+}
+
+@media (max-width: 700px) {
+  .drm-reader-header { flex-wrap: wrap; }
+  .drm-page-count { width: 100%; margin-left: 44px; }
+  .drm-image-container { min-height: 58vh; }
+  .drm-image-container img { max-height: 58vh; }
 }

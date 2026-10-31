@@ -1,11 +1,31 @@
-import { View, Text, StyleSheet, Image, Pressable, ScrollView } from 'react-native';
+import { Alert, View, Text, StyleSheet, Image, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
 import { ChevronLeft, Settings, BookOpen, Award, LogOut } from 'lucide-react-native';
 import { COLOR } from '../src/constants/themes';
+import { logoutMobile } from '../src/drm/api';
+import { clearAccountDownloads } from '../src/drm/storage';
 
 export default function ProfilScreen() {
   const router = useRouter();
+  const logout = async () => {
+    let logoutError;
+    try {
+      await logoutMobile();
+    } catch (error) {
+      logoutError = error;
+    }
+
+    try {
+      await clearAccountDownloads();
+      router.replace('/connexion');
+    } catch (error) {
+      Alert.alert('Déconnexion', 'Les fichiers protégés n’ont pas pu être supprimés.');
+    }
+    if (logoutError) {
+      Alert.alert('Déconnexion', 'La session serveur n’a pas pu être fermée. Les données locales ont été supprimées.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -70,7 +90,7 @@ export default function ProfilScreen() {
             <ChevronLeft color="#9CA3AF" size={18} style={{ transform: [{ rotate: '180deg' }] }} />
           </Pressable>
 
-          <Pressable style={[styles.menuItem, styles.logoutItem]} onPress={() => alert('Déconnexion')}>
+          <Pressable style={[styles.menuItem, styles.logoutItem]} onPress={logout}>
             <View style={styles.menuItemLeft}>
               <LogOut color="#EF4444" size={20} style={styles.menuIcon} />
               <Text style={[styles.menuItemText, styles.logoutText]}>Se déconnecter</Text>

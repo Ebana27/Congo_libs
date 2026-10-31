@@ -1,503 +1,126 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  FiArrowLeft,
-  FiBell,
-  FiBookOpen,
-  FiCheck,
-  FiChevronRight,
-  FiGlobe,
-  FiLock,
-  FiMoon,
-  FiSave,
-  FiShield,
-  FiUser,
-} from 'react-icons/fi'
+import { FiArrowLeft, FiBell, FiBookOpen, FiCheck, FiChevronRight, FiGlobe, FiLock, FiMoon, FiSave, FiShield, FiUser } from 'react-icons/fi'
+
+function PreferenceSwitch({ label, checked, onChange }) {
+  return (
+    <button
+      type="button"
+      className="cg-switch"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={onChange}
+    >
+      <span />
+    </button>
+  )
+}
+
+function SettingRow({ icon: Icon, title, description, children }) {
+  return (
+    <div className="cg-setting-row">
+      <span className="cg-setting-icon"><Icon aria-hidden="true" /></span>
+      <span className="cg-setting-copy"><strong>{title}</strong><small>{description}</small></span>
+      {children}
+    </div>
+  )
+}
 
 function Settings() {
   const navigate = useNavigate()
-
   const [notifications, setNotifications] = useState(true)
   const [darkMode, setDarkMode] = useState(true)
   const [privateAccount, setPrivateAccount] = useState(false)
-
   const [language, setLanguage] = useState('Français')
-
   const [saved, setSaved] = useState(false)
 
   const handleSave = () => {
     setSaved(true)
-
-    setTimeout(() => {
-      setSaved(false)
-    }, 2500)
+    window.setTimeout(() => setSaved(false), 2500)
   }
 
   return (
-    <div className="settings-page">
-
-      {/* HEADER */}
-
-      <section className="settings-header">
-
-        <button
-          className="settings-back"
-          onClick={() => navigate(-1)}
-        >
-          <FiArrowLeft />
-          Retour
+    <main className="cg-page cg-settings">
+      <header className="cg-page-heading cg-page-header">
+        <button className="cg-text-button cg-text-link" onClick={() => navigate(-1)}>
+          <FiArrowLeft aria-hidden="true" /> Retour
         </button>
-
-        <div className="settings-title">
-
-          <span className="section-label">
-            CONGOLIBS
-          </span>
-
-          <h1>
-            Paramètres
-          </h1>
-
-          <p>
-            Personnalisez votre expérience et gérez
-            les préférences de votre compte.
-          </p>
-
+        <div>
+          <p className="cg-eyebrow">Congolibs · Mon espace</p>
+          <h1>Paramètres</h1>
+          <p>Choisissez vos préférences pour cette expérience.</p>
         </div>
+      </header>
 
-      </section>
-
-
-      {/* ACCOUNT */}
-
-      <section className="settings-section">
-
-        <div className="settings-section-title">
-
-          <div className="settings-section-icon">
-            <FiUser />
-          </div>
-
-          <div>
-            <span className="section-label">
-              COMPTE
-            </span>
-
-            <h2>
-              Mon compte
-            </h2>
-          </div>
-
-        </div>
-
-
-        <div className="settings-card">
-
-          <button
-            className="settings-row"
-            onClick={() => navigate('/profile')}
-          >
-
-            <div className="settings-row-icon">
-              <FiUser />
-            </div>
-
-            <div className="settings-row-content">
-
-              <strong>
-                Profil
-              </strong>
-
-              <span>
-                Modifier vos informations personnelles
-              </span>
-
-            </div>
-
-            <FiChevronRight className="settings-row-arrow" />
-
+      <section className="cg-settings-section" aria-labelledby="settings-account">
+        <div className="cg-section-heading"><div><p className="cg-eyebrow">Compte</p><h2 id="settings-account">Mon compte</h2></div></div>
+        <div className="cg-settings-card">
+          <button type="button" className="cg-setting-link" onClick={() => navigate('/profile')}>
+            <SettingRow icon={FiUser} title="Profil" description="Consulter les informations de votre compte"><FiChevronRight aria-hidden="true" /></SettingRow>
           </button>
-
-
-          <div className="settings-divider" />
-
-
-          <button
-            className="settings-row"
-            onClick={() => {}}
-          >
-
-            <div className="settings-row-icon">
-              <FiLock />
-            </div>
-
-            <div className="settings-row-content">
-
-              <strong>
-                Mot de passe
-              </strong>
-
-              <span>
-                Modifier votre mot de passe
-              </span>
-
-            </div>
-
-            <FiChevronRight className="settings-row-arrow" />
-
-          </button>
-
+          <div className="cg-setting-link">
+            <SettingRow icon={FiLock} title="Mot de passe" description="La modification du mot de passe n’est pas encore disponible dans cette interface" />
+          </div>
         </div>
-
       </section>
 
-
-      {/* APPEARANCE */}
-
-      <section className="settings-section">
-
-        <div className="settings-section-title">
-
-          <div className="settings-section-icon">
-            <FiMoon />
-          </div>
-
-          <div>
-            <span className="section-label">
-              APPARENCE
-            </span>
-
-            <h2>
-              Apparence
-            </h2>
-          </div>
-
+      <section className="cg-settings-section" aria-labelledby="settings-appearance">
+        <div className="cg-section-heading"><div><p className="cg-eyebrow">Affichage</p><h2 id="settings-appearance">Apparence</h2></div></div>
+        <div className="cg-settings-card">
+          <SettingRow icon={FiMoon} title="Mode sombre" description="Préférence d’affichage">
+            <PreferenceSwitch label="Activer ou désactiver le mode sombre" checked={darkMode} onChange={() => setDarkMode((value) => !value)} />
+          </SettingRow>
         </div>
-
-
-        <div className="settings-card">
-
-          <div className="settings-row">
-
-            <div className="settings-row-icon">
-              <FiMoon />
-            </div>
-
-            <div className="settings-row-content">
-
-              <strong>
-                Mode sombre
-              </strong>
-
-              <span>
-                Utiliser le thème sombre de CONGOLIBS
-              </span>
-
-            </div>
-
-            <button
-              className={
-                darkMode
-                  ? 'settings-toggle active'
-                  : 'settings-toggle'
-              }
-              onClick={() =>
-                setDarkMode(!darkMode)
-              }
-              aria-label="Activer ou désactiver le mode sombre"
-            >
-              <span />
-            </button>
-
-          </div>
-
-        </div>
-
       </section>
 
-
-      {/* NOTIFICATIONS */}
-
-      <section className="settings-section">
-
-        <div className="settings-section-title">
-
-          <div className="settings-section-icon">
-            <FiBell />
-          </div>
-
-          <div>
-            <span className="section-label">
-              NOTIFICATIONS
-            </span>
-
-            <h2>
-              Notifications
-            </h2>
-          </div>
-
+      <section className="cg-settings-section" aria-labelledby="settings-notifications">
+        <div className="cg-section-heading"><div><p className="cg-eyebrow">Notifications</p><h2 id="settings-notifications">Préférences de notification</h2></div></div>
+        <div className="cg-settings-card">
+          <SettingRow icon={FiBell} title="Nouveautés et recommandations" description="Préférence de réception des notifications">
+            <PreferenceSwitch label="Activer ou désactiver les notifications" checked={notifications} onChange={() => setNotifications((value) => !value)} />
+          </SettingRow>
         </div>
-
-
-        <div className="settings-card">
-
-          <div className="settings-row">
-
-            <div className="settings-row-icon">
-              <FiBell />
-            </div>
-
-            <div className="settings-row-content">
-
-              <strong>
-                Notifications
-              </strong>
-
-              <span>
-                Recevoir les nouveautés et recommandations
-              </span>
-
-            </div>
-
-            <button
-              className={
-                notifications
-                  ? 'settings-toggle active'
-                  : 'settings-toggle'
-              }
-              onClick={() =>
-                setNotifications(!notifications)
-              }
-              aria-label="Activer ou désactiver les notifications"
-            >
-              <span />
-            </button>
-
-          </div>
-
-        </div>
-
       </section>
 
-
-      {/* LANGUAGE */}
-
-      <section className="settings-section">
-
-        <div className="settings-section-title">
-
-          <div className="settings-section-icon">
-            <FiGlobe />
-          </div>
-
-          <div>
-            <span className="section-label">
-              LANGUE
-            </span>
-
-            <h2>
-              Langue de l'application
-            </h2>
-          </div>
-
-        </div>
-
-
-        <div className="settings-card">
-
-          <div className="settings-language">
-
-            <div className="settings-row-icon">
-              <FiGlobe />
-            </div>
-
-            <div className="settings-row-content">
-
-              <strong>
-                Langue
-              </strong>
-
-              <span>
-                Choisissez la langue de CONGOLIBS
-              </span>
-
-            </div>
-
-            <select
-              value={language}
-              onChange={(event) =>
-                setLanguage(event.target.value)
-              }
-            >
-              <option>
-                Français
-              </option>
-
-              <option>
-                English
-              </option>
-
-              <option>
-                Lingala
-              </option>
+      <section className="cg-settings-section" aria-labelledby="settings-language">
+        <div className="cg-section-heading"><div><p className="cg-eyebrow">Langue</p><h2 id="settings-language">Langue de l’application</h2></div></div>
+        <div className="cg-settings-card">
+          <SettingRow icon={FiGlobe} title="Langue" description="Choisissez la langue de l’interface">
+            <label className="cg-visually-hidden" htmlFor="settings-language-select">Langue</label>
+            <select id="settings-language-select" className="cg-select cg-control" value={language} onChange={(event) => setLanguage(event.target.value)}>
+              <option>Français</option><option>English</option><option>Lingala</option>
             </select>
-
-          </div>
-
+          </SettingRow>
         </div>
-
       </section>
 
-
-      {/* PRIVACY */}
-
-      <section className="settings-section">
-
-        <div className="settings-section-title">
-
-          <div className="settings-section-icon">
-            <FiShield />
-          </div>
-
-          <div>
-            <span className="section-label">
-              CONFIDENTIALITÉ
-            </span>
-
-            <h2>
-              Confidentialité
-            </h2>
-          </div>
-
+      <section className="cg-settings-section" aria-labelledby="settings-privacy">
+        <div className="cg-section-heading"><div><p className="cg-eyebrow">Confidentialité</p><h2 id="settings-privacy">Préférences de confidentialité</h2></div></div>
+        <div className="cg-settings-card">
+          <SettingRow icon={FiShield} title="Compte privé" description="Préférence de visibilité de votre activité">
+            <PreferenceSwitch label="Activer ou désactiver le compte privé" checked={privateAccount} onChange={() => setPrivateAccount((value) => !value)} />
+          </SettingRow>
         </div>
-
-
-        <div className="settings-card">
-
-          <div className="settings-row">
-
-            <div className="settings-row-icon">
-              <FiShield />
-            </div>
-
-            <div className="settings-row-content">
-
-              <strong>
-                Compte privé
-              </strong>
-
-              <span>
-                Limiter la visibilité de votre activité
-              </span>
-
-            </div>
-
-            <button
-              className={
-                privateAccount
-                  ? 'settings-toggle active'
-                  : 'settings-toggle'
-              }
-              onClick={() =>
-                setPrivateAccount(!privateAccount)
-              }
-              aria-label="Activer ou désactiver le compte privé"
-            >
-              <span />
-            </button>
-
-          </div>
-
-        </div>
-
       </section>
 
-
-      {/* READING */}
-
-      <section className="settings-section">
-
-        <div className="settings-section-title">
-
-          <div className="settings-section-icon">
-            <FiBookOpen />
-          </div>
-
-          <div>
-            <span className="section-label">
-              LECTURE
-            </span>
-
-            <h2>
-              Préférences de lecture
-            </h2>
-          </div>
-
-        </div>
-
-
-        <div className="settings-card">
-
-          <button
-            className="settings-row"
-            onClick={() => navigate('/library')}
-          >
-
-            <div className="settings-row-icon">
-              <FiBookOpen />
-            </div>
-
-            <div className="settings-row-content">
-
-              <strong>
-                Ma bibliothèque
-              </strong>
-
-              <span>
-                Accéder à vos livres et votre collection
-              </span>
-
-            </div>
-
-            <FiChevronRight className="settings-row-arrow" />
-
+      <section className="cg-settings-section" aria-labelledby="settings-reading">
+        <div className="cg-section-heading"><div><p className="cg-eyebrow">Lecture</p><h2 id="settings-reading">Préférences de lecture</h2></div></div>
+        <div className="cg-settings-card">
+          <button type="button" className="cg-setting-link" onClick={() => navigate('/library')}>
+            <SettingRow icon={FiBookOpen} title="Ma bibliothèque" description="Accéder aux livres de la collection"><FiChevronRight aria-hidden="true" /></SettingRow>
           </button>
-
         </div>
-
       </section>
 
-
-      {/* SAVE */}
-
-      <div className="settings-actions">
-
-        <button
-          className={
-            saved
-              ? 'settings-save saved'
-              : 'settings-save'
-          }
-          onClick={handleSave}
-        >
-
-          {saved ? (
-            <>
-              <FiCheck />
-              Modifications enregistrées
-            </>
-          ) : (
-            <>
-              <FiSave />
-              Enregistrer les modifications
-            </>
-          )}
-
+      <div className="cg-settings-actions">
+        <button type="button" className="cg-button cg-button-primary cg-primary-button" onClick={handleSave}>
+          {saved ? <><FiCheck aria-hidden="true" /> Préférences mises à jour</> : <><FiSave aria-hidden="true" /> Appliquer les préférences</>}
         </button>
-
+        {saved && <p className="cg-status-message" role="status">Ces préférences sont appliquées à cette session.</p>}
       </div>
-
-    </div>
+      <p className="cg-settings-note">La synchronisation des préférences avec votre compte n’est pas encore disponible.</p>
+    </main>
   )
 }
 

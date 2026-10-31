@@ -1,348 +1,94 @@
-import { useNavigate, useParams } from 'react-router-dom'
-import {
-  FiArrowLeft,
-  FiBookOpen,
-  FiHeart,
-  FiShare2,
-  FiStar,
-  FiBookmark,
-  FiClock,
-} from 'react-icons/fi'
-
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { FiArrowLeft, FiArrowRight, FiBookOpen, FiStar } from 'react-icons/fi'
 import books from '../data/books'
 
 function BookDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const book = books.find((item) => item.id === Number(id))
 
-  const book = books.find(
-    (item) => item.id === Number(id)
-  )
-
-  // Si le livre n'existe pas
   if (!book) {
     return (
-      <div className="book-not-found">
-
-        <div className="book-not-found-icon">
-          <FiBookOpen />
+      <main className="cg-page cg-book-not-found">
+        <div className="cg-empty-state" role="status">
+          <FiBookOpen aria-hidden="true" />
+          <h1>Livre introuvable</h1>
+          <p>Le livre demandé n’est pas disponible dans la collection.</p>
+          <button className="cg-button cg-button-primary cg-primary-button" onClick={() => navigate('/bibliotheque')}>
+            <FiArrowLeft aria-hidden="true" /> Retour à la bibliothèque
+          </button>
         </div>
-
-        <h1>
-          Livre introuvable
-        </h1>
-
-        <p>
-          Le livre que vous recherchez n'existe pas
-          ou n'est plus disponible.
-        </p>
-
-        <button
-          onClick={() => navigate('/bibliotheque')}
-        >
-          <FiArrowLeft />
-          Retour à la bibliothèque
-        </button>
-
-      </div>
+      </main>
     )
   }
 
+  const relatedBooks = books.filter((item) => item.id !== book.id && item.category === book.category)
+
   return (
-    <div className="book-details-page">
-
-      {/* RETOUR */}
-
-      <button
-        className="back-button"
-        onClick={() => navigate('/bibliotheque')}
-      >
-        <FiArrowLeft />
-        Retour à la bibliothèque
+    <main className="cg-page cg-book-details">
+      <button className="cg-text-button cg-text-link" onClick={() => navigate('/bibliotheque')}>
+        <FiArrowLeft aria-hidden="true" /> Retour à la bibliothèque
       </button>
 
-
-      {/* INFORMATIONS PRINCIPALES */}
-
-      <section className="book-details-main">
-
-        {/* COUVERTURE */}
-
-        <div className="book-details-cover">
-
-          <div className="book-details-cover-inner">
-            <FiBookOpen />
-
-            <strong>
-              CONGOLIBS
-            </strong>
-
-            <span>
-              {book.category}
-            </span>
-          </div>
-
+      <section className="cg-book-detail-main" aria-labelledby="book-title">
+        <div className="cg-book-detail-cover">
+          {book.cover ? <img src={book.cover} alt={`Couverture de ${book.title}`} /> : (
+            <div className="cg-book-cover cg-book-cover-large">
+              <div className="cg-book-cover-placeholder">
+                <span className="cg-book-cover-mark"><FiBookOpen aria-hidden="true" /></span>
+                <span className="cg-book-cover-category">{book.category}</span>
+                <strong>{book.title}</strong>
+                <span className="cg-book-cover-author">{book.author}</span>
+              </div>
+            </div>
+          )}
         </div>
-
-
-        {/* INFORMATIONS */}
-
-        <div className="book-details-info">
-
-          <span className="book-details-category">
-            {book.category}
-          </span>
-
-          <h1>
-            {book.title}
-          </h1>
-
-          <p className="book-details-author">
-            Par <strong>{book.author}</strong>
-          </p>
-
-
-          <div className="book-details-rating">
-
-            <div className="rating-stars">
-
-              <FiStar />
-              <FiStar />
-              <FiStar />
-              <FiStar />
-              <FiStar />
-
-            </div>
-
-            <strong>
-              {book.rating}
-            </strong>
-
-            <span>
-              / 5
-            </span>
-
-          </div>
-
-
-          <p className="book-description">
-            Découvrez cette œuvre de la littérature
-            congolaise à travers CONGOLIBS. Plongez
-            dans l'univers de l'auteur et explorez
-            une histoire qui participe à la richesse
-            de notre patrimoine littéraire.
-          </p>
-
-
-          {/* STATISTIQUES */}
-
-          <div className="book-details-stats">
-
-            <div className="book-stat">
-
-              <FiBookOpen />
-
-              <div>
-                <strong>
-                  {book.pages}
-                </strong>
-
-                <span>
-                  Pages
-                </span>
-              </div>
-
-            </div>
-
-
-            <div className="book-stat">
-
-              <FiClock />
-
-              <div>
-                <strong>
-                  ~4h
-                </strong>
-
-                <span>
-                  Lecture
-                </span>
-              </div>
-
-            </div>
-
-
-            <div className="book-stat">
-
-              <FiStar />
-
-              <div>
-                <strong>
-                  {book.rating}
-                </strong>
-
-                <span>
-                  Note
-                </span>
-              </div>
-
-            </div>
-
-          </div>
-
-
-          {/* ACTIONS */}
-
-          <div className="book-details-actions">
-
-            <button
-              className="read-book-button"
-              onClick={() =>
-                navigate(`/lecteur/${book.id}`)
-              }
-            >
-              <FiBookOpen />
-              Lire maintenant
-            </button>
-
-
-            <button
-              className="secondary-book-button"
-              title="Ajouter aux favoris"
-            >
-              <FiHeart />
-            </button>
-
-
-            <button
-              className="secondary-book-button"
-              title="Enregistrer"
-            >
-              <FiBookmark />
-            </button>
-
-
-            <button
-              className="secondary-book-button"
-              title="Partager"
-            >
-              <FiShare2 />
-            </button>
-
-          </div>
-
+        <div className="cg-book-detail-copy">
+          <p className="cg-eyebrow">{book.category}</p>
+          <h1 id="book-title">{book.title}</h1>
+          <p className="cg-book-detail-author">Par <strong>{book.author}</strong></p>
+          <p className="cg-book-detail-rating"><FiStar aria-hidden="true" /> Note : {book.rating}/5</p>
+          <dl className="cg-book-facts">
+            <div><dt>Pages</dt><dd>{book.pages}</dd></div>
+            <div><dt>Catégorie</dt><dd>{book.category}</dd></div>
+            <div><dt>Auteur</dt><dd>{book.author}</dd></div>
+          </dl>
+          <button className="cg-button cg-button-primary cg-primary-button" onClick={() => navigate(`/lecteur/${book.id}`)}>
+            <FiBookOpen aria-hidden="true" /> Lire maintenant
+          </button>
         </div>
-
       </section>
 
-
-      {/* DESCRIPTION */}
-
-      <section className="book-description-section">
-
-        <div className="book-section-heading">
-
-          <span className="section-label">
-            À PROPOS DU LIVRE
-          </span>
-
-          <h2>
-            Présentation
-          </h2>
-
-        </div>
-
-
-        <div className="book-long-description">
-
-          <p>
-            <strong>
-              {book.title}
-            </strong>{' '}
-            est une œuvre proposée dans la
-            bibliothèque numérique CONGOLIBS.
-          </p>
-
-          <p>
-            Cette page présente les informations
-            essentielles du livre et permettra
-            prochainement aux utilisateurs de
-            commencer leur lecture directement
-            depuis la plateforme.
-          </p>
-
-          <p>
-            Retrouvez également les autres œuvres
-            disponibles dans notre collection de
-            littérature congolaise et africaine.
-          </p>
-
-        </div>
-
-      </section>
-
-
-      {/* LIVRES SIMILAIRES */}
-
-      <section className="similar-books-section">
-
-        <div className="book-section-heading">
-
-          <span className="section-label">
-            VOUS POURRIEZ AUSSI AIMER
-          </span>
-
-          <h2>
-            Livres similaires
-          </h2>
-
-        </div>
-
-
-        <div className="similar-books">
-
-          {books
-            .filter((item) => item.id !== book.id)
-            .slice(0, 3)
-            .map((item) => (
-
-              <button
-                className="similar-book"
-                key={item.id}
-                onClick={() =>
-                  navigate(`/livre/${item.id}`)
-                }
-              >
-
-                <div className="similar-book-cover">
-                  <FiBookOpen />
+      {relatedBooks.length > 0 && (
+        <section className="cg-section" aria-labelledby="related-books">
+          <div className="cg-section-heading">
+            <div><p className="cg-eyebrow">Même catégorie</p><h2 id="related-books">À découvrir aussi</h2></div>
+          </div>
+          <div className="cg-book-grid">
+            {relatedBooks.slice(0, 3).map((item) => (
+              <Link className="cg-book-card cg-book-card-link" key={item.id} to={`/livre/${item.id}`}>
+                <span className="cg-book-cover">
+                  {item.cover ? <img src={item.cover} alt="" /> : (
+                    <span className="cg-book-cover-placeholder">
+                      <span className="cg-book-cover-mark"><FiBookOpen aria-hidden="true" /></span>
+                      <span className="cg-book-cover-category">{item.category}</span>
+                      <strong>{item.title}</strong>
+                      <span className="cg-book-cover-author">{item.author}</span>
+                    </span>
+                  )}
+                </span>
+                <div className="cg-book-info">
+                  <span className="cg-book-category">{item.category}</span>
+                  <h3>{item.title}</h3>
+                  <p>{item.author}</p>
+                  <span className="cg-book-meta">Voir le livre <FiArrowRight aria-hidden="true" /></span>
                 </div>
-
-                <div className="similar-book-info">
-
-                  <span>
-                    {item.category}
-                  </span>
-
-                  <h3>
-                    {item.title}
-                  </h3>
-
-                  <p>
-                    {item.author}
-                  </p>
-
-                </div>
-
-              </button>
-
+              </Link>
             ))}
-
-        </div>
-
-      </section>
-
-    </div>
+          </div>
+        </section>
+      )}
+    </main>
   )
 }
 

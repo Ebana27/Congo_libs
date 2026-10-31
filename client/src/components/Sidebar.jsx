@@ -49,13 +49,17 @@ function Sidebar({ isOpen, onClose }) {
   return (
     <>
       {isOpen && (
-        <div
+        <button
+          type="button"
           className="sidebar-overlay"
           onClick={onClose}
+          aria-label="Fermer le menu"
         />
       )}
 
       <aside
+        id="primary-sidebar"
+        aria-label="Navigation principale"
         className={`sidebar ${
           isOpen ? 'sidebar-open' : ''
         }`}
@@ -85,7 +89,7 @@ function Sidebar({ isOpen, onClose }) {
         <nav className="sidebar-nav">
           <div className="nav-section">
             <span className="nav-title">
-              MENU
+              Bibliothèque
             </span>
 
             {menuItems.map((item) => (
@@ -110,7 +114,7 @@ function Sidebar({ isOpen, onClose }) {
 
           <div className="nav-section account-section">
             <span className="nav-title">
-              COMPTE
+              Votre espace
             </span>
 
             {accountItems.map((item) => (
@@ -136,13 +140,13 @@ function Sidebar({ isOpen, onClose }) {
 
         <div className="sidebar-footer">
           <div className="footer-logo">
-            C
+            <FiBookOpen />
           </div>
 
           <div>
             <strong>CONGOLIBS</strong>
             <p>
-              Votre bibliothèque partout.
+              Lire et apprendre
             </p>
           </div>
         </div>

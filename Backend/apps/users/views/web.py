@@ -1,75 +1,102 @@
 import json
-from urllib.parse import quote
-from urllib.request import urlopen
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from allauth.socialaccount.models import SocialAccount
-from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
-from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from django.contrib.auth import login
-from dj_rest_auth.registration.views import SocialLoginView
-from django.middleware.csrf import get_token
-from rest_framework import serializers
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_protect
+from rest_framework import serializers, status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.users.api.serializers import UserSerializer
 from apps.users.models import User
 
-# Vue web : garde la logique Google, le login Django et le flux CSRF du navigateur.
 
-class GoogleLoginView(SocialLoginView):
-    adapter_class = GoogleOAuth2Adapter
-    callback_url = "http://localhost:3000/auth/google/callback"
-    client_class = OAuth2Client
+class GoogleAccessTokenSerializer(serializers.Serializer):
+    access_token = serializers.CharField(write_only=True, allow_blank=False)
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class GoogleLoginView(APIView):
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        access_token = request.data.get("access_token") or request.data.get("token")
-        if not access_token:
-            raise serializers.ValidationError({"detail": "Le token Google est requis."})
+        token_serializer = GoogleAccessTokenSerializer(data=request.data)
+        token_serializer.is_valid(raise_exception=True)
+        access_token = token_serializer.validated_data["access_token"]
 
+        google_request = Request(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
         try:
-            google_url = f"https://oauth2.googleapis.com/tokeninfo?access_token={quote(access_token)}"
-            with urlopen(google_url, timeout=10) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-        except Exception:
-            raise serializers.ValidationError({"detail": "Token Google invalide."})
+            with urlopen(google_request, timeout=10) as google_response:
+                google_user = json.loads(google_response.read().decode("utf-8"))
+        except (HTTPError, URLError, TimeoutError, OSError, UnicodeDecodeError, json.JSONDecodeError):
+            return Response(
+                {"detail": "Le jeton Google est invalide ou expiré."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        email = (payload.get("email") or "").strip().lower()
-        if not email or payload.get("email_verified") is not True:
-            raise serializers.ValidationError({"detail": "Token Google invalide."})
+        if not isinstance(google_user, dict):
+            return Response(
+                {"detail": "La réponse de Google est invalide."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        existing_user = User.objects.filter(email__iexact=email).first()
-        if existing_user is not None:
-            if not SocialAccount.objects.filter(user=existing_user, provider="google").exists():
-                SocialAccount.objects.create(
-                    user=existing_user,
-                    provider="google",
-                    uid=email,
-                    extra_data=payload,
+        email = google_user.get("email")
+        if not isinstance(email, str):
+            return Response(
+                {"detail": "Google doit fournir une adresse e-mail vérifiée."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        email = email.strip().lower()
+        email_verified = google_user.get("email_verified") or google_user.get("verified_email")
+        if not email or not email_verified:
+            return Response(
+                {"detail": "Google doit fournir une adresse e-mail vérifiée."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        google_uid = str(google_user.get("id") or google_user.get("sub") or email)
+        social_account = (
+            SocialAccount.objects.select_related("user")
+            .filter(provider="google", uid=google_uid)
+            .first()
+        )
+        if social_account:
+            user = social_account.user
+        else:
+            user = User.objects.filter(email__iexact=email).first()
+            if user is None:
+                username_base = email.partition("@")[0][:140] or "googleuser"
+                username = username_base
+                suffix = 1
+                while User.objects.filter(username__iexact=username).exists():
+                    username = f"{username_base[:140 - len(str(suffix)) - 1]}_{suffix}"
+                    suffix += 1
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=None,
+                    first_name=google_user.get("given_name", ""),
+                    last_name=google_user.get("family_name", ""),
                 )
-            login(request, existing_user, backend="django.contrib.auth.backends.ModelBackend")
-            return Response({"user": UserSerializer(existing_user).data, "csrfToken": get_token(request)})
+            SocialAccount.objects.create(
+                user=user,
+                provider="google",
+                uid=google_uid,
+                extra_data=google_user,
+            )
 
-        base_username = email.split("@")[0]
-        username = base_username
-        suffix = 1
-        while User.objects.filter(username=username).exists():
-            username = f"{base_username}{suffix}"
-            suffix += 1
+        if not user.is_active:
+            return Response(
+                {"detail": "Ce compte est désactivé."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
-        user = User.objects.create_user(
-            username=username,
-            email=email,
-            password=User.objects.make_random_password(),
-        )
-        user.first_name = payload.get("given_name", "")
-        user.last_name = payload.get("family_name", "")
-        user.save(update_fields=["first_name", "last_name"])
-
-        SocialAccount.objects.create(
-            user=user,
-            provider="google",
-            uid=email,
-            extra_data=payload,
-        )
         login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-        return Response({"user": UserSerializer(user).data, "csrfToken": get_token(request)})
+        return Response({"user": UserSerializer(user).data}, status=status.HTTP_200_OK)

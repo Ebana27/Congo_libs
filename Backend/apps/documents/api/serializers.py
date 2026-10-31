@@ -23,6 +23,8 @@ class PublicDocumentSerializer(serializers.ModelSerializer):
 
 
 class DocumentSerializer(PublicDocumentSerializer):
+	lien_telechargement = serializers.CharField(write_only=True, max_length=500)
+
 	class Meta(PublicDocumentSerializer.Meta):
 		fields = [
 			"id",
