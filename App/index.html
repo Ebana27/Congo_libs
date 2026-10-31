@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Congolibs — test lecteur de document</title>
+<style>
+  :root {
+    --green: #088a49;
+    --green-dark: #066b39;
+    --green-light: #e7f6ee;
+    --bg: #f6f8f7;
+    --surface: #ffffff;
+    --text: #0b1512;
+    --muted: #6b7d76;
+    --border: #e2e8e5;
+    --danger: #c0392b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  }
+  header { background: var(--green); color: #fff; padding: 18px 20px; }
+  header h1 { margin: 0; font-size: 19px; }
+  header p { margin: 4px 0 0; font-size: 13px; opacity: 0.85; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 18px;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; flex: 1 1 260px; }
+  label { font-size: 12px; color: var(--muted); }
+  input {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    width: 100%;
+  }
+  input:focus { outline: 2px solid var(--green-light); border-color: var(--green); }
+  button {
+    border: 0;
+    border-radius: 10px;
+    padding: 11px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    background: var(--green);
+    color: #fff;
+  }
+  button:hover { background: var(--green-dark); }
+  button.ghost { background: var(--green-light); color: var(--green-dark); }
+  #status { font-size: 13px; color: var(--muted); margin-bottom: 14px; min-height: 18px; }
+  #status.error { color: var(--danger); }
+  #status.ok { color: var(--green-dark); }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    cursor: pointer;
+    text-align: left;
+    font-weight: 400;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 104px;
+  }
+  .card:hover { border-color: var(--green); background: var(--green-light); }
+  .card .name { font-size: 14px; font-weight: 600; line-height: 19px; }
+  .card .meta { font-size: 11px; color: var(--muted); margin-top: auto; }
+  .tag {
+    align-self: flex-start;
+    background: var(--green-light);
+    color: var(--green-dark);
+    border-radius: 20px;
+    padding: 3px 9px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  #viewer { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--surface); }
+  #viewerHead {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  #viewerTitle { font-size: 15px; font-weight: 600; }
+  #viewerActions { display: flex; gap: 8px; }
+  iframe { width: 100%; height: 70vh; border: 0; display: block; background: #525659; }
+  .hint { font-size: 12px; color: var(--muted); line-height: 18px; margin: 10px 0 0; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Congolibs — test lecteur</h1>
+  <p>Affiche les documents de l'API, puis lance la lecture au clic.</p>
+</header>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="row">
+      <div class="field">
+        <label for="base">URL de l'API</label>
+        <input id="base" type="text" spellcheck="false" />
+      </div>
+      <div class="field">
+        <label for="token">Token (Authorization: Token …)</label>
+        <input id="token" type="password" spellcheck="false" placeholder="collé depuis l'app mobile" />
+      </div>
+      <button id="load">Charger les documents</button>
+    </div>
+    <p class="hint">
+      Le token est stocké uniquement dans ce navigateur (localStorage). Sans token, la liste
+      s'affiche mais le téléchargement renverra 401.
+    </p>
+  </div>
+
+  <div id="status">Renseigne l'URL de l'API puis clique sur « Charger les documents ».</div>
+  <div id="grid" class="grid"></div>
+
+  <div id="viewer" hidden>
+    <div id="viewerHead">
+      <div id="viewerTitle">Document</div>
+      <div id="viewerActions">
+        <button class="ghost" id="openTab">Ouvrir dans un onglet</button>
+        <button class="ghost" id="save">Télécharger</button>
+        <button class="ghost" id="close">Fermer</button>
+      </div>
+    </div>
+    <iframe id="frame" title="Lecture du document"></iframe>
+  </div>
+</div>
+
+<script>
+  var DEFAULT_API = 'https://ledevfreelance.pythonanywhere.com/api/v1';
+  var el = function (id) { return document.getElementById(id); };
+  var state = { base: '', token: '', blobUrl: null };
+
+  el('base').value = localStorage.getItem('cl_base') || DEFAULT_API;
+  el('token').value = localStorage.getItem('cl_token') || '';
+
+  function setStatus(text, kind) {
+    var node = el('status');
+    node.textContent = text;
+    node.className = kind || '';
+  }
+
+  function readConfig() {
+    state.base = el('base').value.trim().replace(/\/$/, '');
+    state.token = el('token').value.trim();
+    localStorage.setItem('cl_base', state.base);
+    localStorage.setItem('cl_token', state.token);
+  }
+
+  function authHeaders(withJson) {
+    var headers = {};
+    if (withJson) headers['Content-Type'] = 'application/json';
+    if (state.token) headers['Authorization'] = 'Token ' + state.token;
+    return headers;
+  }
+
+  function friendlyError(error) {
+    if (error && error.name === 'TypeError') {
+      return 'Requête bloquée par le navigateur. C’est presque toujours CORS : sers ce dossier ' +
+        '(python -m http.server) et autorise cette origine côté API. Détail : ' + error.message;
+    }
+    return (error && error.message) || 'Erreur inconnue.';
+  }
+
+  async function toError(response) {
+    var detail = 'Erreur HTTP ' + response.status;
+    try {
+      var raw = await response.text();
+      try {
+        var parsed = JSON.parse(raw);
+        if (typeof parsed.detail === 'string') detail = parsed.detail;
+        else if (Array.isArray(parsed)) detail = parsed.join(' ');
+        else if (raw) detail = raw.slice(0, 200);
+      } catch (e) {
+        if (raw) detail = raw.slice(0, 200);
+      }
+    } catch (e) {}
+    if (response.status === 401) {
+      detail = '401 — token absent ou non supporté par l’API. ' +
+        'Le backend n’accepte que l’authentification par cookie (SessionAuthentication) : ' +
+        'l’en-tête « Token … » est ignoré, donc le téléchargement est impossible depuis un navigateur ' +
+        'ou une app sans cookie.';
+    } else if (response.status === 403) {
+      detail = '403 — accès refusé (CSRF manquant si l’authentification passe par cookie).';
+    } else if (response.status === 502) {
+      detail = '502 — le backend a échoué à recover le PDF : ' + detail;
+    }
+    return new Error(detail);
+  }
+
+  function releaseBlob() {
+    if (state.blobUrl) {
+      URL.revokeObjectURL(state.blobUrl);
+      state.blobUrl = null;
+    }
+  }
+
+  function renderDocs(docs) {
+    var grid = el('grid');
+    grid.innerHTML = '';
+    if (!docs.length) {
+      setStatus('Aucun document renvoyé par l’API.', '');
+      return;
+    }
+    docs.forEach(function (doc) {
+      var card = document.createElement('button');
+      card.className = 'card';
+      card.type = 'button';
+
+      var tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = doc.type || 'document';
+
+      var name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = doc.nom || 'Sans titre';
+
+      var meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = doc.date_creation
+        ? new Date(doc.date_creation).toLocaleDateString('fr-FR')
+        : (doc.id || '');
+
+      card.appendChild(tag);
+      card.appendChild(name);
+      card.appendChild(meta);
+      card.addEventListener('click', function () { openDoc(doc, name.textContent); });
+      grid.appendChild(card);
+    });
+  }
+
+  async function loadDocs() {
+    readConfig();
+    el('load').disabled = true;
+    setStatus('Chargement des documents…');
+    try {
+      var response = await fetch(state.base + '/documents/', { headers: authHeaders(true) });
+      if (!response.ok) throw await toError(response);
+      var data = await response.json();
+      var docs = Array.isArray(data) ? data : (data.results || []);
+      docs = docs.filter(function (doc) { return doc.delete !== true; });
+      renderDocs(docs);
+      setStatus(docs.length + ' document(s) disponible(s). Clique sur un document pour lancer la lecture.', 'ok');
+    } catch (error) {
+      el('grid').innerHTML = '';
+      setStatus(friendlyError(error), 'error');
+    } finally {
+      el('load').disabled = false;
+    }
+  }
+
+  async function openDoc(doc, title) {
+    readConfig();
+    releaseBlob();
+    el('viewer').hidden = false;
+    el('viewerTitle').textContent = title;
+    el('frame').src = 'about:blank';
+    setStatus('Téléchargement de « ' + title + ' »…');
+    try {
+      var response = await fetch(
+        state.base + '/documents/' + encodeURIComponent(doc.id) + '/telecharger/',
+        { method: 'POST', headers: authHeaders(false) }
+      );
+      if (!response.ok) throw await toError(response);
+
+      var type = response.headers.get('content-type') || '';
+      if (type.indexOf('application/json') !== -1) {
+        var payload = await response.json();
+        throw new Error(payload.detail || 'La réponse de l’API est du JSON, pas un PDF.');
+      }
+
+      var blob = await response.blob();
+      if (!blob.size) throw new Error('Le PDF renvoyé est vide.');
+
+      state.blobUrl = URL.createObjectURL(blob);
+      el('frame').src = state.blobUrl + '#view=FitH';
+      setStatus(
+        'Lecture lancée (' + Math.round(blob.size / 1024) + ' Ko). ' +
+        'Si la zone reste grise, le PDF n’est pas lisible par ce navigateur.',
+        'ok'
+      );
+    } catch (error) {
+      el('viewer').hidden = true;
+      setStatus(friendlyError(error), 'error');
+    }
+  }
+
+  el('load').addEventListener('click', loadDocs);
+  el('close').addEventListener('click', function () {
+    el('viewer').hidden = true;
+    el('frame').src = 'about:blank';
+    releaseBlob();
+  });
+  el('openTab').addEventListener('click', function () {
+    if (state.blobUrl) window.open(state.blobUrl, '_blank');
+  });
+  el('save').addEventListener('click', function () {
+    if (!state.blobUrl) return;
+    var link = document.createElement('a');
+    link.href = state.blobUrl;
+    link.download = (el('viewerTitle').textContent || 'document') + '.pdf';
+    link.click();
+  });
+  el('base').addEventListener('keydown', function (e) { if (e.key === 'Enter') loadDocs(); });
+  el('token').addEventListener('keydown', function (e) { if (e.key === 'Enter') loadDocs(); });
+
+  loadDocs();
+</script>
+</body>
+</html>

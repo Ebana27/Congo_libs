@@ -1,0 +1,95 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: App
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Le runner ubuntu-latest shippe ~12 Go d'outils dont on n'a pas besoin
+      # (dotnet, ghc, boost) : les supprimer evite que le build meure faute de
+      # place. On garde le SDK Android.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost
+          df -h /
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: App/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Android project (expo prebuild)
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Build release APK
+        working-directory: App/android
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+            -Dorg.gradle.jvmargs=-Xmx4g \
+            --no-daemon --console=plain 2>&1 | tee ../gradle-release.log
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          LOG=App/gradle-release.log
+          {
+            echo "## Echec du build APK"
+            echo ""
+            echo '```'
+            java -version 2>&1 || true
+            free -h || true
+            df -h / || true
+            echo '```'
+            echo ""
+            echo "### Erreur Gradle"
+            echo ""
+            echo '```'
+            grep -A 12 "What went wrong" "$LOG" || tail -n 80 "$LOG" || echo "pas de log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=Gradle::$(grep -m1 -A 6 'What went wrong' "$LOG" | tr '\n' ' ' || echo 'build interrompu')"
+          echo "::group::Dernieres lignes"
+          tail -n 80 "$LOG" || true
+          echo "::endgroup::"
+
+      - name: Upload gradle log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-release-log
+          path: App/gradle-release.log
+          if-no-files-found: ignore
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: congolibs-apk
+          # Un APK par ABI (plugins/withAbiSplits.js) : app-arm64-v8a-release.apk
+          # et app-armeabi-v7a-release.apk
+          path: App/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error

@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Congolibs",
+    "slug": "congolibs",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "congolibs",
+    "primaryColor": "#ECFCCB",
+    "icon": "./assets/icons/icon.png",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ECFCCB",
+        "foregroundImage": "./assets/icons/android-icon-foreground.png",
+        "backgroundImage": "./assets/icons/android-icon-background.png",
+        "monochromeImage": "./assets/icons/android-icon-monochrome.png"
+      },
+      "package": "com.anonymous.congolibs"
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/icons/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#edf8f1",
+          "image": "./assets/splash/splash-icon.png",
+          "imageWidth": 200
+        }
+      ],
+      "expo-secure-store",
+      "expo-sharing",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "buildArchs": ["arm64-v8a", "armeabi-v7a"],
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ],
+      "./plugins/withAbiSplits"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "133a5ac9-846a-4de0-a7f5-30132b757ea2"
+      }
+    }
+  }
+}
