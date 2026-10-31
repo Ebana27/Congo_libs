@@ -165,3 +165,10 @@ Dockerfile
 # Fichiers de configuration
 *.swp
 *.swo
+.venv/
+.venv311/
+venv/
+node_modules/
+*.sqlite3
+__pycache__/
+.env
